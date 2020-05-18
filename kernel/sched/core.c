@@ -8,9 +8,15 @@
  */
 #include "sched.h"
 
+#include <linux/khooks.h>
+
 #include <linux/nospec.h>
 
 #include <linux/kcov.h>
+
+#include <linux/pmc_detection.h>
+#include <linux/dynamic_patches.h>
+#include <linux/sc_mitigations.h>
 
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
@@ -3148,9 +3154,30 @@ static inline void
 prepare_task_switch(struct rq *rq, struct task_struct *prev,
 		    struct task_struct *next)
 {
+	u64 global;
 	kcov_prepare_switch(prev);
 	sched_info_switch(rq, prev, next);
+
+	/* PMC save prev context */
+	save_pmc_data(prev);
+	/* Try to cath disabled PMC state */
+	rdmsrl(MSR_CORE_PERF_GLOBAL_CTRL, global);
+	// if (global != (0xFULL | BIT(32) | BIT(33) | BIT(34))) {
+	// 	pr_err("[CPU %u] Detected invalid GLOBAL_CTRL: %llx - restoring\n",
+	// 	smp_processor_id(), global);
+	// 	wrmsrl(MSR_CORE_PERF_GLOBAL_CTRL, 0xFULL | BIT(32) | BIT(33) | BIT(34));
+	// }
+
+	/*
+	 * If BUSY_LOOP is active, stop the core
+	 */
+
+	if (is_busy_loop()) {
+		exit_busy_loop();
+	}
+
 	perf_event_task_sched_out(prev, next);
+
 	rseq_preempt(prev);
 	fire_sched_out_preempt_notifiers(prev, next);
 	prepare_task(next);
@@ -3254,6 +3281,65 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 	}
 
 	tick_nohz_task_switch();
+
+	place_hook(HOOK_AFTER_CSWITCH);
+
+	/**
+	 * All the action related to scheduled suspected thread are placed here
+	 * 1. Print state
+	 * 2. Flush related cache
+	 * 3. Pause Sibiling Core (SMT)
+	 */
+
+	if (is_suspected(current->mm)) {
+		if (debug_level & DEBUG_SC_L3FLUSH) {
+			// unsigned long cr0;
+			// Read cr0;
+			// asm volatile("mov %%cr0,%0" : "=r" (cr0));
+			// // Disable cache
+			// if (!(cr0 & X86_CR0_CD)) {
+			// 	cr0 |= X86_CR0_CD; // Set CD
+			// 	cr0 &= ~X86_CR0_NW; // Clear NW
+			// 	native_write_cr0(cr0);
+			// 	pr_warn("PID %u Cache No-Fill mode set\n", current->pid);
+			// }
+			// Flush Cache
+			asm volatile ("wbinvd");
+			pr_warn("PID %u LLC FLUSHED\n", current->pid);
+		}
+		if (debug_level & DEBUG_SC_BUSYLOOP) {
+			pr_warn("PID %u TODO DEBUG_SC_BUSYLOOP\n", current->pid);
+		}
+	} else {
+		// if (debug_level & DEBUG_SC_L3FLUSH) {
+			// unsigned long cr0;
+			// // Read cr0;
+			// asm volatile("mov %%cr0,%0" : "=r" (cr0));
+			// // Restore cache
+			// if (cr0 & X86_CR0_CD) {
+			// 	cr0 &= ~(X86_CR0_CD | X86_CR0_NW); // Clear CD and NW
+			// 	native_write_cr0(cr0);
+			// 	pr_warn("PID %u Normal Cache Behavior restored\n", current->pid);
+			// }
+		// }
+	}
+
+	if (debug_level & DEBUG_TE_MITIGATE) {
+		set_security_context();
+	}
+
+	if (current->detection_state & PMC_D_REQ_PROFILING) {
+		pr_warn("Start profiling: PID %u\n", current->pid);
+		current->detection_state |= PMC_D_PROFILING;
+		current->detection_state &= ~PMC_D_REQ_PROFILING;
+	}
+
+	/*
+	 * PMC restore just before start executing
+	 * This must be executed after profiling activation!
+	 */
+	restore_pmc_data(current);
+
 	return rq;
 }
 
@@ -5469,6 +5555,7 @@ out_put_task:
 	put_task_struct(p);
 	return retval;
 }
+EXPORT_SYMBOL(sched_setaffinity);
 
 static int get_user_cpu_mask(unsigned long __user *user_mask_ptr, unsigned len,
 			     struct cpumask *new_mask)

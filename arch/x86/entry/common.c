@@ -34,6 +34,10 @@
 #include <asm/fpu/api.h>
 #include <asm/nospec-branch.h>
 
+#include <linux/sc_mitigations.h>
+#include <linux/dynamic_patches.h>
+#include <linux/pmc_detection.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/syscalls.h>
 
@@ -145,6 +149,18 @@ static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
 		/* We have work to do. */
 		local_irq_enable();
 
+		// get in only if the flag is set and the process is not already suspected
+		if (current->detection_state & PMC_D_ERR_SANITIZE &&
+		    !(current->mm->flags & BIT(27))) {
+			// Clear the flag (Ack)
+			current->detection_state &= ~PMC_D_ERR_SANITIZE;
+
+			if (debug_level & DEBUG_SC_MIGRATE)
+				migrate_suspected(current, smp_processor_id());
+			if (debug_level & DEBUG_TE_MITIGATE)
+				suspect_task(current);
+		}
+
 		if (cached_flags & _TIF_NEED_RESCHED)
 			schedule();
 
@@ -192,6 +208,13 @@ __visible inline void prepare_exit_to_usermode(struct pt_regs *regs)
 
 	if (unlikely(cached_flags & EXIT_TO_USERMODE_LOOP_FLAGS))
 		exit_to_usermode_loop(regs, cached_flags);
+
+	if (!smp_processor_id() && (debug_level & DEBUG_SC_BUSYLOOP) && !is_busy_loop()) {
+		enter_busy_loop();
+	}
+	// if (is_suspected(current->mm)) {
+
+	// }
 
 	/* Reload ti->flags; we may have rescheduled above. */
 	cached_flags = READ_ONCE(ti->flags);

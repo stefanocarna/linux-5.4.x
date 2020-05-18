@@ -105,10 +105,13 @@
 #endif
 
 #define LOCAL_TIMER_VECTOR		0xec
+/* This line uses a free fast entry */
+#define FAST_PMI			0xe9 // 0xea 0xeb
 
 #define NR_VECTORS			 256
 
 #ifdef CONFIG_X86_LOCAL_APIC
+#define FIRST_FAST_ENTRY_VECTOR		(LOCAL_TIMER_VECTOR - 3)
 #define FIRST_SYSTEM_VECTOR		LOCAL_TIMER_VECTOR
 #else
 #define FIRST_SYSTEM_VECTOR		NR_VECTORS

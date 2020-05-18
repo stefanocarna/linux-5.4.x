@@ -15,6 +15,8 @@
  *	Mikael Pettersson	:	PM converted to driver model.
  */
 
+#include <linux/fast_irq.h>
+
 #include <linux/perf_event.h>
 #include <linux/kernel_stat.h>
 #include <linux/mc146818rtc.h>
@@ -2157,6 +2159,31 @@ void __init register_lapic_address(unsigned long address)
 /*
  * Local APIC interrupts
  */
+
+/*
+ * Primary implementation of fast interrupt.
+ * It just use the same scheme of spurious interrupts
+ * and executes the linked function
+ */
+__visible void __irq_entry smp_fast_interrupt(struct pt_regs *regs)
+{
+	u8 vector = ~regs->orig_ax;
+
+	entering_irq();
+	// pr_info("[FAST IRQ] FFEV: %u, FSV: %u, vector %u\n", FIRST_FAST_ENTRY_VECTOR,
+		// FIRST_SYSTEM_VECTOR, vector);
+
+	if (FIRST_FAST_ENTRY_VECTOR <= vector && vector < FIRST_SYSTEM_VECTOR) {
+		vector -= FIRST_FAST_ENTRY_VECTOR;
+		if (!!fast_vectors[vector]) {
+			(*(fast_handler_t *)(fast_vectors[vector]))();
+		}
+	}
+
+	ack_APIC_irq();
+// out:
+	exiting_irq();
+}
 
 /*
  * This interrupt should _never_ happen with our APIC/SMP architecture

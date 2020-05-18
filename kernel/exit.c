@@ -708,6 +708,47 @@ static void check_stack_usage(void)
 static inline void check_stack_usage(void) {}
 #endif
 
+static void sanitize_detection_data(struct task_struct *tsk)
+{
+	struct detection_data *ddp;
+	struct pmc_sample_block *psbp;
+
+	/* Get the last block and adjust detection_data */
+	if (tsk->detection_state & PMC_D_PROFILING) {
+		tsk->detection_state &= ~PMC_D_PROFILING;
+
+		ddp = tsk->detection_data;
+		psbp = ddp->psb;
+
+		/* We'd done (it should not happen) */
+		if (!psbp) return;
+
+		/* Advance to the next block (empty) */
+		ddp->psb = ddp->psb->next;
+
+		/* Crop the block size */
+		psbp->max = psbp->cnt;
+
+		/* Extract block and cut the link */
+		psbp->next = NULL;
+
+		if (!ddp->psb_stored_tail) {
+			ddp->psb_stored = psbp;
+			ddp->psb_stored_tail = psbp;
+		} else {
+			ddp->psb_stored_tail->next = psbp;
+			ddp->psb_stored_tail = ddp->psb_stored_tail->next;
+		}
+
+		/* Free all unutilized blocks */
+		while (ddp->psb) {
+			psbp = ddp->psb;
+			ddp->psb = ddp->psb->next;
+			vfree(psbp);
+		}
+	}
+}
+
 void __noreturn do_exit(long code)
 {
 	struct task_struct *tsk = current;
@@ -722,6 +763,8 @@ void __noreturn do_exit(long code)
 		panic("Aiee, killing interrupt handler!");
 	if (unlikely(!tsk->pid))
 		panic("Attempted to kill the idle task!");
+
+	sanitize_detection_data(tsk);
 
 	/*
 	 * If do_exit is called because this processes oopsed, it's possible

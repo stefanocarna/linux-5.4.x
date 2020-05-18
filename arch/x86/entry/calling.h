@@ -1,5 +1,6 @@
 /* SPDX-License-Identifier: GPL-2.0 */
 #include <linux/jump_label.h>
+#include <asm/dynamic_patches.h>
 #include <asm/unwind_hints.h>
 #include <asm/cpufeatures.h>
 #include <asm/page_types.h>
@@ -184,6 +185,12 @@ For 32-bit we have the following conventions - kernel is built with
 #define PTI_USER_PCID_MASK		(1 << PTI_USER_PCID_BIT)
 #define PTI_USER_PGTABLE_AND_PCID_MASK  (PTI_USER_PCID_MASK | PTI_USER_PGTABLE_MASK)
 
+/*
+ * Dyanmic PTI. This value has to be synchronized with coredump.h
+ */
+#define MMF_HAS_SUSPECTED_BIT	27	/* mm is related to a suspected process */
+// #define MMF_HAS_SUSPECTED_MASK	(1 << MMF_HAS_SUSPECTED)
+
 .macro SET_NOFLUSH_BIT	reg:req
 	bts	$X86_CR3_PCID_NOFLUSH_BIT, \reg
 .endm
@@ -194,9 +201,18 @@ For 32-bit we have the following conventions - kernel is built with
 	andq    $(~PTI_USER_PGTABLE_AND_PCID_MASK), \reg
 .endm
 
+/*
+ * The PTI_USER_PGTABLE_MASK (12th bit) identifies if
+ * we are working on Kernel View or User View of the Page Table.
+ * The highest part is the user one and it requires the CR3 to be
+ * adjusted (ADJUST_KERNEL_CR3)
+ */
 .macro SWITCH_TO_KERNEL_CR3 scratch_reg:req
 	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_PTI
 	mov	%cr3, \scratch_reg
+	/* test and skip if the Kernel View is set */
+	bt 	$PTI_USER_PGTABLE_BIT, \scratch_reg
+	jnc 	.Lend_\@
 	ADJUST_KERNEL_CR3 \scratch_reg
 	mov	\scratch_reg, %cr3
 .Lend_\@:
@@ -205,8 +221,23 @@ For 32-bit we have the following conventions - kernel is built with
 #define THIS_CPU_user_pcid_flush_mask   \
 	PER_CPU_VAR(cpu_tlbstate) + TLB_STATE_user_pcid_flush_mask
 
+/*
+ * We do not want to make a call to function, but
+ * access the current->mm->flags directly
+ */
 .macro SWITCH_TO_USER_CR3_NOSTACK scratch_reg:req scratch_reg2:req
 	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_PTI
+
+	/*
+	 * Dynamically enable PTI
+	 * get current reference
+	 */
+	mov 	PER_CPU_VAR(current_task), \scratch_reg
+	mov 	MM_current(\scratch_reg), \scratch_reg
+	mov 	FLAGS_mm_struct(\scratch_reg), \scratch_reg
+	bt 	$MMF_HAS_SUSPECTED_BIT, \scratch_reg
+	jnc 	.Lend_\@
+
 	mov	%cr3, \scratch_reg
 
 	ALTERNATIVE "jmp .Lwrcr3_\@", "", X86_FEATURE_PCID
@@ -328,7 +359,11 @@ For 32-bit we have the following conventions - kernel is built with
 	ALTERNATIVE "", "lfence", X86_FEATURE_FENCE_SWAPGS_USER
 .endm
 .macro FENCE_SWAPGS_KERNEL_ENTRY
-	ALTERNATIVE "", "lfence", X86_FEATURE_FENCE_SWAPGS_KERNEL
+	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_FENCE_SWAPGS_KERNEL
+	dynamic_patch_save(DCP_FENCE_SWAP_KERNEL, %rax, .Lnofence_\@)
+	lfence
+	dynamic_patch_restore(%rax, .Lnofence_\@)
+.Lend_\@:
 .endm
 
 .macro STACKLEAK_ERASE_NOCLOBBER

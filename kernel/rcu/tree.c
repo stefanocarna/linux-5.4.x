@@ -59,6 +59,8 @@
 #include <linux/sched/clock.h>
 #include "../time/tick-internal.h"
 
+#include <linux/pmc_detection.h>
+
 #include "tree.h"
 #include "rcu.h"
 
@@ -2792,8 +2794,10 @@ static int rcu_pending(void)
 	struct rcu_data *rdp = this_cpu_ptr(&rcu_data);
 	struct rcu_node *rnp = rdp->mynode;
 
-	/* Check for CPU stalls, if enabled. */
-	check_cpu_stall(rdp);
+	// TODO Fix
+	if (!(debug_level & DEBUG_SC_BUSYLOOP))
+		/* Check for CPU stalls, if enabled. */
+		check_cpu_stall(rdp);
 
 	/* Does this CPU need a deferred NOCB wakeup? */
 	if (rcu_nocb_need_deferred_wakeup(rdp))

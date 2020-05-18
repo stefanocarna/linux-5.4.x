@@ -119,6 +119,11 @@ obj-$(CONFIG_GCC_PLUGIN_STACKLEAK) += stackleak.o
 KASAN_SANITIZE_stackleak.o := n
 KCOV_INSTRUMENT_stackleak.o := n
 
+# TODO KHOOS must be a config_param
+CONFIG_KHOOKS := y
+obj-$(CONFIG_KHOOKS) += khooks.o
+
+
 $(obj)/configs.o: $(obj)/config_data.gz
 
 targets += config_data.gz

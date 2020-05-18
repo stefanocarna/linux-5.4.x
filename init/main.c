@@ -93,6 +93,7 @@
 #include <linux/rodata_test.h>
 #include <linux/jump_label.h>
 #include <linux/mem_encrypt.h>
+#include <linux/pmc_detection.h>
 
 #include <asm/io.h>
 #include <asm/bugs.h>
@@ -697,6 +698,10 @@ asmlinkage __visible void __init start_kernel(void)
 	perf_event_init();
 	profile_init();
 	call_function_init();
+
+	/* Enable here the pmc_detection Core0 */
+	pmc_detection_init();
+
 	WARN(!irqs_disabled(), "Interrupts were enabled early\n");
 
 	early_boot_irqs_disabled = false;
@@ -1026,6 +1031,7 @@ static void __init do_basic_setup(void)
 	cpuset_init_smp();
 	driver_init();
 	init_irq_proc();
+	init_pmc_detection_proc();
 	do_ctors();
 	usermodehelper_enable();
 	do_initcalls();

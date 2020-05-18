@@ -32,6 +32,8 @@
 #include <linux/posix-timers.h>
 #include <linux/rseq.h>
 
+#include <linux/pmc_detection.h>
+
 /* task_struct member predeclarations (sorted alphabetically): */
 struct audit_context;
 struct backing_dev_info;
@@ -637,6 +639,30 @@ struct task_struct {
 	 * scheduling-critical items should be added above here.
 	 */
 	randomized_struct_fields_start
+
+	/*
+	 * This does not have a real purpose at the moment, it is here
+	 * just to speed up the developement in case we need extra bits
+	 * TODO: remove asap
+	 */
+	u32 detection_state;
+
+	/*
+	 * It is used to store samples when sampling mode is active
+	 * and it is accessed from /proc/detecting interface
+	 */
+	struct detection_data *detection_data;
+
+	/*
+	 * PMCs value logged every context switch (and pmi)
+	 * TODO: make these parametric according to the system caps
+	 */
+	u64 fixed0;
+	u64 fixed1;
+	u64 pmc0;
+	u64 pmc1;
+	u64 pmc2;
+	u64 pmc3;
 
 	void				*stack;
 	refcount_t			usage;
@@ -1442,6 +1468,7 @@ extern struct pid *cad_pid;
 /*
  * Per process flags
  */
+#define PF_SUSPECTED		0x00000001	/* I am a SUSPECTED thread */
 #define PF_IDLE			0x00000002	/* I am an IDLE thread */
 #define PF_EXITING		0x00000004	/* Getting shut down */
 #define PF_VCPU			0x00000010	/* I'm a virtual CPU */

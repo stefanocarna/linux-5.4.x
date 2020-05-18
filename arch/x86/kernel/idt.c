@@ -2,7 +2,10 @@
 /*
  * Interrupt descriptor table related code
  */
+
+#include <linux/fast_irq.h>
 #include <linux/interrupt.h>
+#include <linux/pmc_detection.h>	/* pmc_detection_interrupt */
 
 #include <asm/traps.h>
 #include <asm/proto.h>
@@ -311,15 +314,25 @@ void __init idt_setup_apic_and_irq_gates(void)
 
 	idt_setup_from_table(idt_table, apic_idts, ARRAY_SIZE(apic_idts), true);
 
-	for_each_clear_bit_from(i, system_vectors, FIRST_SYSTEM_VECTOR) {
-		entry = irq_entries_start + 8 * (i - FIRST_EXTERNAL_VECTOR);
+	for_each_clear_bit_from(i, system_vectors, FIRST_FAST_ENTRY_VECTOR) { // 0xec
+		entry = irq_entries_start + 8 * (i - FIRST_EXTERNAL_VECTOR); // 0x20
+		pr_info("[IDT INIT]: i: %u - i - FIRST_EXTERNAL_VECTOR: %u\n", i, i - FIRST_EXTERNAL_VECTOR);
 		set_intr_gate(i, entry);
 	}
+
+	for_each_clear_bit_from(i, system_vectors, FIRST_SYSTEM_VECTOR) { // 0xec
+		entry = fast_irq_entries_start + 8 * (i - FIRST_FAST_ENTRY_VECTOR); // 0x20
+		pr_info("[IDT INIT FAST]: i: %u - i - FIRST_FAST_ENTRY_VECTOR: %u\n", i, i - FIRST_FAST_ENTRY_VECTOR);
+		set_intr_gate(i, entry);
+	}
+
+	fast_vectors[0] = (unsigned long) pmc_detection_interrupt;
 
 #ifdef CONFIG_X86_LOCAL_APIC
 	for_each_clear_bit_from(i, system_vectors, NR_VECTORS) {
 		set_bit(i, system_vectors);
 		entry = spurious_entries_start + 8 * (i - FIRST_SYSTEM_VECTOR);
+		pr_info("[IDT INIT SP]: i: %u - i - FIRST_SYSTEM_VECTOR: %u\n", i, i - FIRST_SYSTEM_VECTOR);
 		set_intr_gate(i, entry);
 	}
 #endif

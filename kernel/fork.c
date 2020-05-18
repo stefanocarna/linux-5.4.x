@@ -107,6 +107,8 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/task.h>
 
+#include <linux/pmc_detection.h>
+
 /*
  * Minimum number of threads to boot the kernel
  */
@@ -2376,6 +2378,89 @@ long _do_fork(struct kernel_clone_args *args)
 		init_completion(&vfork);
 		get_task_struct(p);
 	}
+
+	// Clear the detection_state
+	p->detection_state = 0;
+	if (debug_level & DEBUG_FORK) {
+		u64 fx1, fxctr, perfctr;
+
+		// Debug PMC state. Place here to not overwhelm the buffer
+		pd_read_fixed_pmc(1, fx1);
+		rdmsrl(MSR_CORE_PERF_FIXED_CTR_CTRL, fxctr);
+		rdmsrl(MSR_CORE_PERF_GLOBAL_CTRL, perfctr);
+		pr_info("DEBUG [CPU %u] PMC State: FIX_CTR: %llx, \
+		    GBL_CTR: %llx, FX1: %llu\n",
+		    smp_processor_id(), fxctr, perfctr, fx1);
+
+
+		pr_info("DEBUG Forking %u from %u.\
+		    X[%llu,%llu] - A[%llu,%llu,%llu,%llu]\n",
+		    p->pid, current->pid, p->fixed0, p->fixed1, p->pmc0,
+		    p->pmc1, p->pmc2, p->pmc3);
+	}
+
+	// Clear the PMC data
+	p->fixed0 = 0;
+	p->fixed1 = 0;
+	p->pmc0 = 0;
+	p->pmc1 = 0;
+	p->pmc2 = 0;
+	p->pmc3 = 0;
+
+
+	/* If the current process is profiled, then profile the thread child */
+	// TODO Check if the check is sound
+	// TODO if thread spaws a sibling
+	// if (current->tgid == p->tgid) {
+	if ((current->detection_state & PMC_D_PROFILING)) {
+
+		bool profile = false;
+		pid_t pgid = 0;
+
+		if (debug_level & DEBUG_STUFF) {
+			if (current->group_leader) pgid = current->group_leader->pid;
+			pr_info("@DEBUG PROFILING PID %d (TGID %d) from PPID %d (TGID %d) (PGID %d)\n", p->pid, p->tgid, current->pid, current->tgid, pgid);
+			profile = true;
+		} else if (current->tgid == p->tgid) {
+			pr_info("Forking PID %d (TGID %d) from PPID %d (TGID %d)\n", p->pid, p->tgid, current->pid, current->tgid);
+			profile = true;
+		} else if (debug_level & DEBUG_PROFILED) {
+			pr_info("DEBUG PROFILING on %d (TGID %d) not forwarded to PID %d (TGID %d)\n",
+			    current->pid, current->tgid, p->pid, p->tgid);
+		}
+
+		if (profile) {
+			pid_t *pidp, *tgidp;
+			struct detection_data *dd;
+
+
+			pidp = vmalloc(sizeof(pid_t));
+			if (!pidp) goto err;
+
+			tgidp = vmalloc(sizeof(pid_t));
+			if (!tgidp) goto err_tgid;
+
+			*pidp = p->pid;
+			*tgidp = pgid ? pgid : current->tgid;
+
+			dd = init_pid_detection_data(p);
+			if (!dd) goto err_dd;
+
+			register_pid_dir_proc(tgidp, pidp, dd);
+			goto end;
+
+err_dd:
+			pr_warn("err_dd\n");
+			vfree(tgidp);
+err_tgid:
+			pr_warn("err_tgid\n");
+			vfree(pidp);
+err:
+			pr_err("Error while starting profiling PID %d (TGID %d)\n",
+			    p->pid, p->tgid);
+		}
+	}
+end:
 
 	wake_up_new_task(p);
 

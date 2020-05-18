@@ -10,6 +10,8 @@
 #include <asm/cpufeatures.h>
 #include <asm/msr-index.h>
 
+#include <asm/dynamic_patches.h>
+
 /*
  * This should be used immediately before a retpoline alternative. It tells
  * objtool where the retpolines are so that it can make sense of the control
@@ -44,25 +46,31 @@
  * the optimal version — two calls, each with their own speculation
  * trap should their return address end up getting used, in a loop.
  */
-#define __FILL_RETURN_BUFFER(reg, nr, sp)	\
-	mov	$(nr/2), reg;			\
-771:						\
-	call	772f;				\
-773:	/* speculation trap */			\
-	pause;					\
-	lfence;					\
-	jmp	773b;				\
-772:						\
-	call	774f;				\
-775:	/* speculation trap */			\
-	pause;					\
-	lfence;					\
-	jmp	775b;				\
-774:						\
-	dec	reg;				\
-	jnz	771b;				\
-	add	$(BITS_PER_LONG/8) * nr, sp;
-
+#define __FILL_RETURN_BUFFER(reg, nr, sp)			\
+	movq 	PER_CPU_VAR(cpu_dynamic_patches), reg;		\
+	testq $(DCP_RETPOLINE_SHIFT|DCP_RSB_CTXSW_SHIFT), reg;	\
+	bt 	$DCP_RETPOLINE, reg;				\
+	jz 	776f;						\
+	/* original function strats here */			\
+	mov	$(nr/2), reg;					\
+771:								\
+	call	772f;						\
+773:	/* speculation trap */					\
+	pause;							\
+	lfence;							\
+	jmp	773b;						\
+772:								\
+	call	774f;						\
+775:	/* speculation trap */					\
+	pause;							\
+	lfence;							\
+	jmp	775b;						\
+774:								\
+	dec	reg;						\
+	jnz	771b;						\
+	add	$(BITS_PER_LONG/8) * nr, sp;			\
+	/* original function ends here */			\
+776:
 #ifdef __ASSEMBLY__
 
 /*
@@ -115,7 +123,7 @@
 	ANNOTATE_NOSPEC_ALTERNATIVE
 	ALTERNATIVE_2 __stringify(ANNOTATE_RETPOLINE_SAFE; jmp *\reg),	\
 		__stringify(RETPOLINE_JMP \reg), X86_FEATURE_RETPOLINE,	\
-		__stringify(lfence; ANNOTATE_RETPOLINE_SAFE; jmp *\reg), X86_FEATURE_RETPOLINE_AMD
+		__stringify(lfence; ANNOTATE_RETPOLINE_SAFE; jmp *\reg), X86_FEATURE_RETPOLINE_AMD;
 #else
 	jmp	*\reg
 #endif
@@ -126,7 +134,7 @@
 	ANNOTATE_NOSPEC_ALTERNATIVE
 	ALTERNATIVE_2 __stringify(ANNOTATE_RETPOLINE_SAFE; call *\reg),	\
 		__stringify(RETPOLINE_CALL \reg), X86_FEATURE_RETPOLINE,\
-		__stringify(lfence; ANNOTATE_RETPOLINE_SAFE; call *\reg), X86_FEATURE_RETPOLINE_AMD
+		__stringify(lfence; ANNOTATE_RETPOLINE_SAFE; call *\reg), X86_FEATURE_RETPOLINE_AMD;
 #else
 	call	*\reg
 #endif
@@ -274,7 +282,8 @@ static inline void indirect_branch_prediction_barrier(void)
 {
 	u64 val = PRED_CMD_IBPB;
 
-	alternative_msr_write(MSR_IA32_PRED_CMD, val, X86_FEATURE_USE_IBPB);
+	if (X86_FEATURE_USE_IBPB && !check_cpu_dynamic_flag(DCP_USE_IBPB_SHIFT))
+		alternative_msr_write(MSR_IA32_PRED_CMD, val, X86_FEATURE_USE_IBPB);
 }
 
 /* The Intel SPEC CTRL MSR base value cache */

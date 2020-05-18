@@ -451,7 +451,7 @@ static __always_inline void __speculation_ctrl_update(unsigned long tifp,
 	 * otherwise avoid the MSR write.
 	 */
 	if (IS_ENABLED(CONFIG_SMP) &&
-	    static_branch_unlikely(&switch_to_cond_stibp)) {
+	    static_branch_unlikely(&switch_to_cond_stibp) && !skip_switch_to_cond_stibp) {
 		updmsr |= !!(tif_diff & _TIF_SPEC_IB);
 		msr |= stibp_tif_to_spec_ctrl(tifn);
 	}

@@ -149,6 +149,7 @@ extern char irq_entries_start[];
 #ifdef CONFIG_TRACING
 #define trace_irq_entries_start irq_entries_start
 #endif
+extern char fast_irq_entries_start[];
 
 extern char spurious_entries_start[];
 

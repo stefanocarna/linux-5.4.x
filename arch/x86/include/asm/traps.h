@@ -115,6 +115,7 @@ asmlinkage void smp_deferred_error_interrupt(struct pt_regs *regs);
 
 void smp_apic_timer_interrupt(struct pt_regs *regs);
 void smp_spurious_interrupt(struct pt_regs *regs);
+void smp_fast_interrupt(struct pt_regs *regs);
 void smp_error_interrupt(struct pt_regs *regs);
 asmlinkage void smp_irq_move_cleanup_interrupt(void);
 

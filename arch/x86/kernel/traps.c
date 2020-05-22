@@ -12,6 +12,8 @@
 
 #define pr_fmt(fmt) KBUILD_MODNAME ": " fmt
 
+#include <linux/fast_irq.h>
+
 #include <linux/context_tracking.h>
 #include <linux/interrupt.h>
 #include <linux/kallsyms.h>
@@ -73,6 +75,7 @@
 #endif
 
 DECLARE_BITMAP(system_vectors, NR_VECTORS);
+unsigned long fast_vectors[FIRST_SYSTEM_VECTOR - FIRST_FAST_ENTRY_VECTOR];
 
 static inline void cond_local_irq_enable(struct pt_regs *regs)
 {

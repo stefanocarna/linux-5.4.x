@@ -8,6 +8,8 @@
 
 #define pr_fmt(fmt) "genirq: " fmt
 
+#include <linux/fast_irq.h>
+
 #include <linux/irq.h>
 #include <linux/kthread.h>
 #include <linux/module.h>
@@ -2049,6 +2051,40 @@ int request_threaded_irq(unsigned int irq, irq_handler_t handler,
 	return retval;
 }
 EXPORT_SYMBOL(request_threaded_irq);
+
+int request_fast_irq(unsigned int fast_irq, fast_handler_t handler)
+{
+	if (fast_irq < 0 || fast_irq >= FIRST_SYSTEM_VECTOR - FIRST_FAST_ENTRY_VECTOR) {
+		pr_warn("Cannot install irq handler at %u. Invalid\n", fast_irq);
+		return -EINVAL;
+	}
+
+	if (!!fast_vectors[fast_irq]) {
+		pr_warn("Cannot install irq handler at %u. Busy\n", fast_irq);
+		return -EBUSY;
+	}
+
+	fast_vectors[fast_irq] = (unsigned long) handler;
+	return FIRST_FAST_ENTRY_VECTOR + fast_irq;
+}
+EXPORT_SYMBOL(request_fast_irq);
+
+int free_fast_irq(unsigned int fast_irq)
+{
+	if (fast_irq < 0 || fast_irq >= FIRST_SYSTEM_VECTOR - FIRST_FAST_ENTRY_VECTOR) {
+		pr_warn("Cannot uninstall irq handler at %u. Invalid\n", fast_irq);
+		return -EINVAL;
+	}
+
+	if (!fast_vectors[fast_irq]) {
+		pr_warn("Cannot uninstall irq handler at %u. Empty\n", fast_irq);
+		return -EINVAL;
+	}
+
+	fast_vectors[fast_irq] = 0;
+	return 0;
+}
+EXPORT_SYMBOL(free_fast_irq);
 
 /**
  *	request_any_context_irq - allocate an interrupt line

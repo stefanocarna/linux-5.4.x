@@ -366,7 +366,7 @@ END(ret_from_fork)
 	.align 8
 ENTRY(irq_entries_start)
     vector=FIRST_EXTERNAL_VECTOR
-    .rept (FIRST_SYSTEM_VECTOR - FIRST_EXTERNAL_VECTOR)
+    .rept (FIRST_FAST_ENTRY_VECTOR - FIRST_EXTERNAL_VECTOR)
 	UNWIND_HINT_IRET_REGS
 	pushq	$(~vector+0x80)			/* Note: always in signed byte range */
 	jmp	common_interrupt
@@ -374,6 +374,18 @@ ENTRY(irq_entries_start)
 	vector=vector+1
     .endr
 END(irq_entries_start)
+
+	.align 8
+ENTRY(fast_irq_entries_start)
+    vector=FIRST_FAST_ENTRY_VECTOR
+    .rept (FIRST_SYSTEM_VECTOR - FIRST_FAST_ENTRY_VECTOR)
+	UNWIND_HINT_IRET_REGS
+	pushq	$(~vector+0x80)			/* Note: always in signed byte range */
+	jmp	common_fast_interrupt
+	.align	8
+	vector=vector+1
+    .endr
+END(fast_irq_entries_start)
 
 	.align 8
 ENTRY(spurious_entries_start)
@@ -597,6 +609,19 @@ common_spurious:
 	jmp	ret_from_intr
 END(common_spurious)
 _ASM_NOKPROBE(common_spurious)
+
+/*
+ * The interrupt stubs push (~vector+0x80) onto the stack and
+ * then jump to common_spurious/interrupt.
+ */
+common_fast_interrupt:
+	addq	$-0x80, (%rsp)			/* Adjust vector to [-256, -1] range */
+	call	interrupt_entry
+	UNWIND_HINT_REGS indirect=1
+	call	smp_fast_interrupt		/* rdi points to pt_regs */
+	jmp	ret_from_intr
+END(common_fast_interrupt)
+_ASM_NOKPROBE(common_fast_interrupt)
 
 /* common_interrupt is a hotpath. Align it */
 	.p2align CONFIG_X86_L1_CACHE_SHIFT

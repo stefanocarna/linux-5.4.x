@@ -2,8 +2,8 @@
 VERSION = 5
 PATCHLEVEL = 4
 SUBLEVEL = 40
-EXTRAVERSION =
-NAME = Kleptomaniac Octopus
+EXTRAVERSION = 1
+NAME = DynamicPMC
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"

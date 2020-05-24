@@ -32,6 +32,8 @@
 #include <linux/posix-timers.h>
 #include <linux/rseq.h>
 
+#include <linux/pmc_dynamic.h>
+
 /* task_struct member predeclarations (sorted alphabetically): */
 struct audit_context;
 struct backing_dev_info;
@@ -637,6 +639,12 @@ struct task_struct {
 	 * scheduling-critical items should be added above here.
 	 */
 	randomized_struct_fields_start
+
+	/*
+	 * PMCs value logged every kernel to user (and viceversa) transition
+	 */
+	struct pmc_snapshot *pmc_user;
+	struct pmc_snapshot *pmc_kernel;
 
 	void				*stack;
 	refcount_t			usage;

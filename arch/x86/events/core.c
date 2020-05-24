@@ -1874,7 +1874,7 @@ out:
 	cpuhp_remove_state(CPUHP_PERF_X86_PREPARE);
 	return err;
 }
-early_initcall(init_hw_perf_events);
+// early_initcall(init_hw_perf_events);
 
 static inline void x86_pmu_read(struct perf_event *event)
 {

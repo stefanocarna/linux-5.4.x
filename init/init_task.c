@@ -14,6 +14,7 @@
 
 #include <asm/pgtable.h>
 #include <linux/uaccess.h>
+#include <linux/pmc_dynamic.h>
 
 static struct signal_struct init_signals = {
 	.nr_threads	= 1,
@@ -49,6 +50,9 @@ static struct sighand_struct init_sighand = {
 	.signalfd_wqh	= __WAIT_QUEUE_HEAD_INITIALIZER(init_sighand.signalfd_wqh),
 };
 
+
+static struct pmc_snapshot init_pmc_snapshot_user;
+static struct pmc_snapshot init_pmc_snapshot_kernel;
 /*
  * Set up the first task table, touch at your own risk!. Base=0,
  * limit=0x1fffff (=2MB)
@@ -62,6 +66,8 @@ struct task_struct init_task
 	.thread_info	= INIT_THREAD_INFO(init_task),
 	.stack_refcount	= REFCOUNT_INIT(1),
 #endif
+	.pmc_user	= &init_pmc_snapshot_user,
+	.pmc_kernel	= &init_pmc_snapshot_kernel,
 	.state		= 0,
 	.stack		= init_stack,
 	.usage		= REFCOUNT_INIT(2),

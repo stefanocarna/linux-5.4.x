@@ -3,7 +3,7 @@ VERSION = 5
 PATCHLEVEL = 4
 SUBLEVEL = 40
 EXTRAVERSION = 1
-NAME = DynamicPMC
+NAME = dynamic
 
 # *DOCUMENTATION*
 # To see a list of typical targets execute "make help"

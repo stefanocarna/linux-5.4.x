@@ -785,6 +785,13 @@ void __noreturn do_exit(long code)
 	tsk->exit_code = code;
 	taskstats_exit(tsk, group_dead);
 
+	/* 
+	 * Free pmc_snapshot structs
+	 * Memory allocation is contiguos for pmc_user and pmc_kernel,
+	 * so we can just free the former.
+	 */
+	kfree(tsk->pmc_user);
+
 	exit_mm();
 
 	if (group_dead)

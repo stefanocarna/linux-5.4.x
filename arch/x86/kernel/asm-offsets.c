@@ -93,6 +93,18 @@ static void __used common(void)
 	BLANK();
 	DEFINE(PTREGS_SIZE, sizeof(struct pt_regs));
 
+	/* PMC_SNAPSHOT for entry/leave kernel-/user-land */
+	OFFSET(TASK_STRUCT_pmc_user, task_struct, pmc_user);
+	OFFSET(TASK_STRUCT_pmc_kernel, task_struct, pmc_kernel);
+	OFFSET(PMC_SNAPSHOT_pmc_bitmap, pmc_snapshot, pmc_bitmap);
+	OFFSET(PMC_SNAPSHOT_fixed0, pmc_snapshot, fixed0);
+	OFFSET(PMC_SNAPSHOT_fixed1, pmc_snapshot, fixed1);
+	OFFSET(PMC_SNAPSHOT_fixed2, pmc_snapshot, fixed2);
+	OFFSET(PMC_SNAPSHOT_pmc0, pmc_snapshot, pmc0);
+	OFFSET(PMC_SNAPSHOT_pmc1, pmc_snapshot, pmc1);
+	OFFSET(PMC_SNAPSHOT_pmc2, pmc_snapshot, pmc2);
+	OFFSET(PMC_SNAPSHOT_pmc3, pmc_snapshot, pmc3);
+
 	/* TLB state for the entry code */
 	OFFSET(TLB_STATE_user_pcid_flush_mask, tlb_state, user_pcid_flush_mask);
 

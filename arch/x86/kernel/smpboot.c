@@ -55,6 +55,7 @@
 #include <linux/gfp.h>
 #include <linux/cpuidle.h>
 #include <linux/numa.h>
+#include <linux/pmc_dynamic.h>
 
 #include <asm/acpi.h>
 #include <asm/desc.h>
@@ -238,6 +239,9 @@ static void notrace start_secondary(void *unused)
 	check_tsc_sync_target();
 
 	speculative_store_bypass_ht_init();
+
+	/* This code should be called for every cpu other than Core0 */
+	this_cpu_pmc_dynamic_init();
 
 	/*
 	 * Lock vector_lock, set CPU online and bring the vector

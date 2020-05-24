@@ -39,6 +39,7 @@
 #include <asm/frame.h>
 #include <asm/nospec-branch.h>
 #include <linux/err.h>
+#include <asm/pmc_dynamic.h>
 
 #include "calling.h"
 
@@ -156,6 +157,9 @@ ENTRY(entry_SYSCALL_64)
 	SWITCH_TO_KERNEL_CR3 scratch_reg=%rsp
 	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
 
+	/* Take user pmc snapshot */
+	pmc_snapshot_user
+
 	/* Construct struct pt_regs on stack */
 	pushq	$__USER_DS				/* pt_regs->ss */
 	pushq	PER_CPU_VAR(cpu_tss_rw + TSS_sp2)	/* pt_regs->sp */
@@ -257,6 +261,10 @@ syscall_return_via_sysret:
 	 * Save old stack pointer and switch to trampoline stack.
 	 */
 	movq	%rsp, %rdi
+	
+	/* Take kernel pmc snapshot */
+	pmc_snapshot_kernel
+
 	movq	PER_CPU_VAR(cpu_tss_rw + TSS_sp0), %rsp
 
 	pushq	RSP-RDI(%rdi)	/* RSP */
@@ -542,8 +550,12 @@ ENTRY(interrupt_entry)
 
 	/* Need to switch before accessing the thread stack. */
 	SWITCH_TO_KERNEL_CR3 scratch_reg=%rdi
+
 	movq	%rsp, %rdi
 	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
+
+	/* Take user pmc snapshot */
+	pmc_snapshot_user
 
 	 /*
 	  * We have RDI, return address, and orig_ax on the stack on
@@ -678,6 +690,9 @@ GLOBAL(swapgs_restore_regs_and_return_to_usermode)
 	 * We can do future final exit work right here.
 	 */
 	STACKLEAK_ERASE_NOCLOBBER
+
+	/* Take user pmc snapshot */
+	pmc_snapshot_kernel
 
 	SWITCH_TO_USER_CR3_STACK scratch_reg=%rdi
 

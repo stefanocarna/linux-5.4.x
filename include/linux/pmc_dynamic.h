@@ -5,6 +5,18 @@
 #include <asm/msr-index.h>
 #include <linux/percpu.h>
 #include <linux/sched.h>
+// #include <asm/pmc_dynamic.h>
+
+#define event_umask(event, umask)	(x | (y << 8))
+/* Define events and related bit */
+#define LLC_Reference			event_umask(0x2e, 0x4f)
+#define LLC_Misses			event_umask(0x2e, 0x41)
+#define MEM_LOAD_RETIRED_L1_HIT		event_umask(0xd1, 0x01)
+#define MEM_LOAD_RETIRED_L2_HIT		event_umask(0xd1, 0x02)
+#define MEM_LOAD_RETIRED_L3_HIT		event_umask(0xd1, 0x04)
+#define MEM_LOAD_RETIRED_L1_MISS	event_umask(0xd1, 0x08)
+#define MEM_LOAD_RETIRED_L2_MISS	event_umask(0xd1, 0x10)
+#define MEM_LOAD_RETIRED_L3_MISS	event_umask(0xd1, 0x20)
 
 /* Performance Event Select Register 0 */
 #define MSR_CORE_PERFEVTSEL_ADDRESS	0x00000186
@@ -30,7 +42,7 @@
 #define MSR_CORE_PMC6			MSR_CORE_PMC(6)
 #define MSR_CORE_PMC7			MSR_CORE_PMC(7)
 
-#define MAX_ID_PMC			4
+#define MAX_ID_PMC			8
 
 #define PERF_GLOBAL_CTRL_FIXED1_BIT	33
 #define PERF_GLOBAL_CTRL_FIXED1_SHIFT	BIT(PERF_GLOBAL_CTRL_FIXED1_BIT)
@@ -60,7 +72,8 @@ struct pmc_cfg {
 } __attribute__((packed));
 
 struct pmc_snapshot {
-	u64 pmc_bitmap;
+	pid_t pid;
+	u64 tsc;
 	u64 fixed0;
 	u64 fixed1;
 	u64 fixed2;
@@ -68,15 +81,10 @@ struct pmc_snapshot {
 	u64 pmc1;
 	u64 pmc2;
 	u64 pmc3;
-} __attribute__((packed));
-
-struct pmc_sample {
-	u64 fixed0;
-	u64 fixed1;
-	u64 pmc0;
-	u64 pmc1;
-	u64 pmc2;
-	u64 pmc3;
+	u64 pmc4;
+	u64 pmc5;
+	u64 pmc6;
+	u64 pmc7;
 } __attribute__((packed));
 
 extern void save_pmc_data(struct task_struct *ts);

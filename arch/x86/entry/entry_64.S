@@ -158,7 +158,8 @@ ENTRY(entry_SYSCALL_64)
 	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
 
 	/* Take user pmc snapshot */
-	pmc_snapshot_user
+	pmc_snap_kernel_in
+	gdb_track_in(1)
 
 	/* Construct struct pt_regs on stack */
 	pushq	$__USER_DS				/* pt_regs->ss */
@@ -262,7 +263,8 @@ syscall_return_via_sysret:
 	movq	%rsp, %rdi
 	
 	/* Take kernel pmc snapshot */
-	pmc_snapshot_kernel
+	pmc_snap_kernel_out
+	gdb_track_out(1)
 
 	movq	PER_CPU_VAR(cpu_tss_rw + TSS_sp0), %rsp
 	UNWIND_HINT_EMPTY
@@ -555,7 +557,8 @@ ENTRY(interrupt_entry)
 	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
 
 	/* Take user pmc snapshot */
-	pmc_snapshot_user
+	pmc_snap_kernel_in
+	gdb_track_in(2)
 
 	 /*
 	  * We have RDI, return address, and orig_ax on the stack on
@@ -693,7 +696,8 @@ GLOBAL(swapgs_restore_regs_and_return_to_usermode)
 	STACKLEAK_ERASE_NOCLOBBER
 
 	/* Take user pmc snapshot */
-	pmc_snapshot_kernel
+	pmc_snap_kernel_out
+	gdb_track_out(2)
 
 	SWITCH_TO_USER_CR3_STACK scratch_reg=%rdi
 
@@ -1488,6 +1492,10 @@ ENTRY(nmi)
 	cld
 	FENCE_SWAPGS_USER_ENTRY
 	SWITCH_TO_KERNEL_CR3 scratch_reg=%rdx
+
+	pmc_snap_kernel_in
+	gdb_track_in(3)
+
 	movq	%rsp, %rdx
 	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
 	UNWIND_HINT_IRET_REGS base=%rdx offset=8

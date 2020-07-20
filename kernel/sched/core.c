@@ -20,6 +20,9 @@
 
 #include "pelt.h"
 
+#include <asm/pmc_dynamic.h>
+// #include <linux/pmc_dynamic.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 

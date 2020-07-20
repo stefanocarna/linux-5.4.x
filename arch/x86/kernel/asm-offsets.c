@@ -19,6 +19,8 @@
 #include <asm/suspend.h>
 #include <asm/tlbflush.h>
 
+#include <asm/pmc_dynamic.h>
+
 #ifdef CONFIG_XEN
 #include <xen/interface/xen.h>
 #endif
@@ -96,7 +98,7 @@ static void __used common(void)
 	/* PMC_SNAPSHOT for entry/leave kernel-/user-land */
 	OFFSET(TASK_STRUCT_pmc_user, task_struct, pmc_user);
 	OFFSET(TASK_STRUCT_pmc_kernel, task_struct, pmc_kernel);
-	OFFSET(PMC_SNAPSHOT_pmc_bitmap, pmc_snapshot, pmc_bitmap);
+	OFFSET(PMC_SNAPSHOT_tsc, pmc_snapshot, tsc);
 	OFFSET(PMC_SNAPSHOT_fixed0, pmc_snapshot, fixed0);
 	OFFSET(PMC_SNAPSHOT_fixed1, pmc_snapshot, fixed1);
 	OFFSET(PMC_SNAPSHOT_fixed2, pmc_snapshot, fixed2);
@@ -104,6 +106,17 @@ static void __used common(void)
 	OFFSET(PMC_SNAPSHOT_pmc1, pmc_snapshot, pmc1);
 	OFFSET(PMC_SNAPSHOT_pmc2, pmc_snapshot, pmc2);
 	OFFSET(PMC_SNAPSHOT_pmc3, pmc_snapshot, pmc3);
+	OFFSET(PMC_SNAPSHOT_pmc4, pmc_snapshot, pmc4);
+	OFFSET(PMC_SNAPSHOT_pmc5, pmc_snapshot, pmc5);
+	OFFSET(PMC_SNAPSHOT_pmc6, pmc_snapshot, pmc6);
+	OFFSET(PMC_SNAPSHOT_pmc7, pmc_snapshot, pmc7);
+
+	// TODO Delete
+	OFFSET(GDB_TRACK_stop, gdb_track, stop);
+	OFFSET(GDB_TRACK_kin0, gdb_track, kin0);
+	OFFSET(GDB_TRACK_kin1, gdb_track, kin1);
+	OFFSET(GDB_TRACK_kout0, gdb_track, kout0);
+	OFFSET(GDB_TRACK_kout1, gdb_track, kout1);
 
 	/* TLB state for the entry code */
 	OFFSET(TLB_STATE_user_pcid_flush_mask, tlb_state, user_pcid_flush_mask);

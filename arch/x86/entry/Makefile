@@ -5,6 +5,10 @@
 
 OBJECT_FILES_NON_STANDARD_entry_64_compat.o := y
 
+# CFLAGS_common.o := -save-temps=obj
+# CFLAGS_entry_64.o := -save-temps=obj
+# CFLAGS_syscall_64.o := -save-temps=obj
+
 CFLAGS_syscall_64.o		+= $(call cc-option,-Wno-override-init,)
 CFLAGS_syscall_32.o		+= $(call cc-option,-Wno-override-init,)
 obj-y				:= entry_$(BITS).o thunk_$(BITS).o syscall_$(BITS).o

@@ -20,6 +20,9 @@
 
 #include "pelt.h"
 
+#include <asm/pmc_dynamic.h>
+// #include <linux/pmc_dynamic.h>
+
 #define CREATE_TRACE_POINTS
 #include <trace/events/sched.h>
 
@@ -3182,6 +3185,21 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 	struct rq *rq = this_rq();
 	struct mm_struct *mm = rq->prev_mm;
 	long prev_state;
+
+	if (this_cpu_read(pcpu_track.stop)) {
+		pr_info("[%u@%u] finish_task_switch STOP:%u {%u,%u - %u,%u}\n",
+			current->pid, smp_processor_id(), this_cpu_read(pcpu_track.stop),
+			this_cpu_read(pcpu_track.kin0), this_cpu_read(pcpu_track.kin1),
+			this_cpu_read(pcpu_track.kout0), this_cpu_read(pcpu_track.kout1));
+
+		dump_stack();
+		
+		this_cpu_write(pcpu_track.stop, 0);
+		this_cpu_write(pcpu_track.kin0, 0);
+		this_cpu_write(pcpu_track.kin1, 0);
+		this_cpu_write(pcpu_track.kout0, 0);
+		this_cpu_write(pcpu_track.kout1, 0);
+	}
 
 	/*
 	 * The previous task will have left us with a preempt_count of 2

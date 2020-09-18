@@ -51,8 +51,8 @@ static struct sighand_struct init_sighand = {
 };
 
 
-static struct pmc_snapshot init_pmc_snapshot_user;
-static struct pmc_snapshot init_pmc_snapshot_kernel;
+static struct pmc_snapshot init_pmc_snapshot_user = {0};
+static struct pmc_snapshot init_pmc_snapshot_kernel = {0};
 /*
  * Set up the first task table, touch at your own risk!. Base=0,
  * limit=0x1fffff (=2MB)

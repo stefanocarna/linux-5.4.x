@@ -186,6 +186,11 @@ For 32-bit we have the following conventions - kernel is built with
 #define PTI_USER_PCID_MASK		(1 << PTI_USER_PCID_BIT)
 #define PTI_USER_PGTABLE_AND_PCID_MASK  (PTI_USER_PCID_MASK | PTI_USER_PGTABLE_MASK)
 
+/*
+ * Dyanmic PTI. This value has to be synchronized with coredump.h
+ */
+#define MMF_PTI_ENABLED_BIT		27	/* mm is related to a suspected process */
+
 .macro SET_NOFLUSH_BIT	reg:req
 	bts	$X86_CR3_PCID_NOFLUSH_BIT, \reg
 .endm
@@ -196,9 +201,18 @@ For 32-bit we have the following conventions - kernel is built with
 	andq    $(~PTI_USER_PGTABLE_AND_PCID_MASK), \reg
 .endm
 
+/*
+ * The PTI_USER_PGTABLE_MASK (12th bit) identifies if the Page Table is set on
+ * the Kernel or the User View.
+ * The highest part is the User View which requires the CR3 to be adjusted
+ * (ADJUST_KERNEL_CR3)
+ */
 .macro SWITCH_TO_KERNEL_CR3 scratch_reg:req
 	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_PTI
 	mov	%cr3, \scratch_reg
+	/* Test if the Kernel View is set */
+	bt 	$PTI_USER_PGTABLE_BIT, \scratch_reg
+	jnc 	.Lend_\@
 	ADJUST_KERNEL_CR3 \scratch_reg
 	mov	\scratch_reg, %cr3
 .Lend_\@:
@@ -209,6 +223,14 @@ For 32-bit we have the following conventions - kernel is built with
 
 .macro SWITCH_TO_USER_CR3_NOSTACK scratch_reg:req scratch_reg2:req
 	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_PTI
+
+	/* Dynamically enable PTI if requested */
+	mov 	PER_CPU_VAR(current_task), \scratch_reg
+	mov 	MM_current(\scratch_reg), \scratch_reg
+	mov 	FLAGS_mm_struct(\scratch_reg), \scratch_reg
+	bt 	$MMF_PTI_ENABLED_BIT, \scratch_reg
+	jnc 	.Lend_\@
+
 	mov	%cr3, \scratch_reg
 
 	ALTERNATIVE "jmp .Lwrcr3_\@", "", X86_FEATURE_PCID

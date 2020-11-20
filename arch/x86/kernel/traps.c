@@ -73,6 +73,7 @@
 #endif
 
 DECLARE_BITMAP(system_vectors, NR_VECTORS);
+unsigned long fast_vector_handlers[NR_VECTORS] = { 0 };
 
 static inline void cond_local_irq_enable(struct pt_regs *regs)
 {

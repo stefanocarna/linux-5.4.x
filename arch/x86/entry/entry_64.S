@@ -373,6 +373,15 @@ ENTRY(irq_entries_start)
 	.align	8
 	vector=vector+1
     .endr
+/* Place the fast irq entries just after the irq entries */
+    vector=FIRST_EXTERNAL_VECTOR
+    .rept (NR_VECTORS - FIRST_EXTERNAL_VECTOR)
+	UNWIND_HINT_IRET_REGS
+	pushq	$(~vector+0x80)			/* Note: always in signed byte range */
+	jmp	common_fast_interrupt
+	.align	8
+	vector=vector+1
+    .endr
 END(irq_entries_start)
 
 	.align 8
@@ -597,6 +606,19 @@ common_spurious:
 	jmp	ret_from_intr
 END(common_spurious)
 _ASM_NOKPROBE(common_spurious)
+
+/*
+ * The interrupt stubs push (~vector+0x80) onto the stack and
+ * then jump to common_fast_interrupt.
+ */
+common_fast_interrupt:
+	addq	$-0x80, (%rsp)			/* Adjust vector to [-256, -1] range */
+	call	interrupt_entry
+	UNWIND_HINT_REGS indirect=1
+	call	do_fast_IRQ			/* rdi points to pt_regs */
+	jmp	ret_from_intr
+END(common_fast_interrupt)
+_ASM_NOKPROBE(common_fast_interrupt)
 
 /* common_interrupt is a hotpath. Align it */
 	.p2align CONFIG_X86_L1_CACHE_SHIFT

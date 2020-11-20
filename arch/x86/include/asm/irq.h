@@ -10,6 +10,7 @@
 
 #include <asm/apicdef.h>
 #include <asm/irq_vectors.h>
+#include <asm/fast_irq.h>
 
 static inline int irq_canonicalize(int irq)
 {

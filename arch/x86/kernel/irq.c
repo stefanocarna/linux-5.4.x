@@ -226,6 +226,103 @@ u64 arch_irq_stat(void)
 
 
 /*
+ * TODO FUTURE
+ * 
+ * Both request_fast_irq() and free_fast_irq() function should be place
+ * elsewhere, but this operation will be carried later.
+ */
+int request_fast_irq(unsigned int fast_irq, fast_handler_t handler)
+{
+	unsigned long fast_IRQ_base;
+	char *fast_irq_entries_start = irq_entries_start +
+	    8 * (FIRST_SYSTEM_VECTOR - FIRST_EXTERNAL_VECTOR);
+
+	// TODO take a lock
+	if (fast_irq < FIRST_EXTERNAL_VECTOR || 
+	    fast_irq >= NR_VECTORS) {
+		pr_warn("Cannot install irq handler at %u. Invalid\n", fast_irq);
+		return -EINVAL;
+	}
+
+	if (test_bit(fast_irq, system_vectors) || fast_vector_handlers[fast_irq]) {
+		pr_warn("Cannot install irq handler at %u. Busy\n", fast_irq);
+		return -EBUSY;
+	}
+
+	/* The first vector is placed at index FIRST_EXTERNAL_VECTOR */
+	fast_IRQ_base = (unsigned long)(fast_irq_entries_start +
+	    8 * (fast_irq - FIRST_EXTERNAL_VECTOR));
+
+	/*
+	 * Magic trick, setup the new entry
+	 * 
+	 * Fast IRQ entries are place right after the IRQ entries. There are 
+	 * (FIRST_SYSTEM_VECTOR - FIRST_EXTERNAL_VECTOR) number of IRQ entries
+	 * and an equal number of fast IRQ entries. The real problem of changing
+	 * an IDT entry at runtime is with the size of the IDT entry, which 
+	 * is bigger than an atomic write (128bit vs 64bit). Furthermore, the 
+	 * address split into several non-countigous chunks.
+	 * To avoid any issue, we leverage the fact the two entries to be swapped
+	 * are very close, so that we need just to update the last few bits of
+	 * the handler address. This can be done within an atomic write.
+	 * 
+	 * At the moment we do not change entry configuration (e.g. DPL).
+	 */
+
+	idt_table[fast_irq].offset_low = (u16)fast_IRQ_base;
+
+	set_bit(fast_irq, system_vectors);
+	fast_vector_handlers[fast_irq] = (unsigned long) handler;
+	
+	// TODO release the lock
+	return fast_irq;
+}
+EXPORT_SYMBOL(request_fast_irq);
+
+int free_fast_irq(unsigned int fast_irq)
+{
+	/* The first vector is placed at index FIRST_EXTERNAL_VECTOR */
+	unsigned long old_IRQ_base = (unsigned long)(irq_entries_start +
+	    8 * (fast_irq - FIRST_EXTERNAL_VECTOR));
+
+	if (fast_irq < FIRST_EXTERNAL_VECTOR || fast_irq >= NR_VECTORS) {
+		pr_warn("Cannot uninstall irq handler at %u. Invalid\n", fast_irq);
+		return -EINVAL;
+	}
+
+	if (!fast_vector_handlers[fast_irq]) {
+		pr_warn("Cannot uninstall irq handler at %u. Empty\n", fast_irq);
+		return -EINVAL;
+	}
+
+	/* Restore the old handler address */
+	idt_table[fast_irq].offset_low = (u16) old_IRQ_base;
+	
+	clear_bit(fast_irq, system_vectors);
+
+	fast_vector_handlers[fast_irq] = 0UL;
+	return 0;
+}
+EXPORT_SYMBOL(free_fast_irq);
+
+/*
+ * Primary implementation of fast interrupt.
+ * It just use the same scheme of spurious interrupts
+ * and executes the linked function
+ */
+__visible void __irq_entry do_fast_IRQ(struct pt_regs *regs)
+{
+	u8 vector = ~regs->orig_ax;
+
+	entering_irq();
+
+	(*(fast_handler_t *)(fast_vector_handlers[vector]))();
+
+	ack_APIC_irq();
+	exiting_irq();
+}
+
+/*
  * do_IRQ handles all normal device IRQ's (the special
  * SMP cross-CPU interrupts have their own specific
  * handlers).

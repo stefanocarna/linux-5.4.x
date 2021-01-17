@@ -12,6 +12,8 @@
 
 #include <linux/kcov.h>
 
+// #include <linux/dynamic-mitigations.h>
+
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
 
@@ -3291,6 +3293,9 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 
 	rq->prev_mm = NULL;
 
+	// if (has_pending_mitigations(prev))
+	// 	enable_mitigations_on_task(prev);
+			
 	/*
 	 * A task struct has one reference for the use as "current".
 	 * If a task dies, then it sets TASK_DEAD in tsk->state and calls
@@ -3327,6 +3332,11 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 		membarrier_mm_sync_core_before_usermode(mm);
 		mmdrop(mm);
 	}
+
+	/* Dynamic mitigation */
+	// LLC_flush(current);
+	// mitigations_switch(prev, current);
+
 	if (unlikely(prev_state == TASK_DEAD)) {
 		if (prev->sched_class->task_dead)
 			prev->sched_class->task_dead(prev);

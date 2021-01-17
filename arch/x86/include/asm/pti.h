@@ -7,9 +7,6 @@
 extern void pti_init(void);
 extern void pti_check_boottime_disable(void);
 extern void pti_finalize(void);
-/* Dynamic PTI */
-extern void enable_pti_on_mm(struct mm_struct *mm);
-extern void disable_pti_on_mm(struct mm_struct *mm);
 #else
 static inline void pti_check_boottime_disable(void) { }
 #endif

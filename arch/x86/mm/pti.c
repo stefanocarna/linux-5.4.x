@@ -159,17 +159,12 @@ pgd_t __pti_set_user_pgtbl(pgd_t *pgdp, pgd_t pgd)
 	if ((pgd.pgd & (_PAGE_USER|_PAGE_PRESENT)) == (_PAGE_USER|_PAGE_PRESENT) &&
 		    (__supported_pte_mask & _PAGE_NX)) {
 
-		/* We want to catch only calls coming from fork */
-		if (!current->mm || !current->active_mm ||
-			(current->mm != current->active_mm))
-			goto skip;
-
 		/* We are disabling the PTI mechanism */
-		if (current->mm->flags & MMF_PTI_DISABLING_MASK)
+		if (current->active_mm->flags & MMF_PTI_DISABLING_MASK)
 			goto skip;
 
 		/* Set the NX bit only if the process is supected */
-		if (current->mm->flags & MMF_PTI_ENABLED_MASK)
+		if (current->active_mm->flags & MMF_PTI_ENABLED_MASK)
 			pgd.pgd |= _PAGE_NX;
 	}
 
@@ -178,90 +173,6 @@ skip:
 	/* return the copy of the PGD we want the kernel to use: */
 	return pgd;
 }
-
-void enable_pti_on_mm(struct mm_struct *mm)
-{
-        unsigned restored = 0;
-         
-        /* Kernel View PGD */
-	pgd_t *k_pgdp = mm->pgd;
-
-        /* Set the flag to be checked at kernel mode exit  */
-        mm->flags |= MMF_PTI_ENABLED_MASK;
-
-
-        /* 
-         * Until now, all threads with this mm worked on Kernel View.
-         * Force the reschedule on all other cores to ensure that threads with
-         * this mm will load the User View during user mode execution. 
-         */
-        kick_all_cpus_sync();
-
-        /* 
-         * We may block the reschedule of interested threads or even the entire
-         * execution to wait for the Kernel View is fixed. However, we consider
-         * this time slot as a grace period. Of course, an attack may still be
-         * perpetrated in this small time window. 
-         */
-
-	/* Scan for all present kernel pgd entries and set the NX bit */
-	while (pgdp_maps_userspace(k_pgdp)) {
-
-		if ((k_pgdp->pgd & (_PAGE_USER | _PAGE_PRESENT)) ==
-		    (_PAGE_USER | _PAGE_PRESENT) &&
-		    (__supported_pte_mask & _PAGE_NX)) {
-		    	k_pgdp->pgd |= _PAGE_NX;
-                        restored++;
-                    }
-
-		++k_pgdp;
-	}
-
-        pr_info("Restored %u PGPD entries\n", restored);
-}
-EXPORT_SYMBOL(enable_pti_on_mm);
-
-void disable_pti_on_mm(struct mm_struct *mm)
-{
-        unsigned set = 0;
-         
-        /* Kernel View PGD */
-	pgd_t *k_pgdp = mm->pgd;
-
-        /* 
-         * We don't need any sync mechanism because every scheduled thread will
-         * keep running with the already selected Page Table View. Once the
-         * Kernel View is ready, we can clear the flag in the mm and allow using
-         * the Kernel View during user mode execution. However, it may happens 
-         * that while restoring the Kernel View, some interested thread may
-         * allocate a new PGP entry with NX bit set. This may cause a fault at
-         * runtime after the clearing the flag bit. We use an extra flag to
-         * avoid the NX bit setting during this phase.
-         */
-
-        mm->flags |= MMF_PTI_DISABLING_MASK;
-
-	/* Scan for all present kernel pgd entries and clear the NX bit */
-	while (pgdp_maps_userspace(k_pgdp)) {
-
-		if ((k_pgdp->pgd & (_PAGE_USER | _PAGE_PRESENT)) ==
-		    (_PAGE_USER | _PAGE_PRESENT) &&
-		    (__supported_pte_mask & _PAGE_NX)) {
-		    	k_pgdp->pgd &= ~_PAGE_NX;
-                        set++;
-                    }
-
-		++k_pgdp;
-	}
-       
-        /* Clear the flag to be checked at kernel mode exit */
-        mm->flags &= ~MMF_PTI_ENABLED_MASK;
-        /* End of PTI OFF transition */
-        mm->flags &= ~MMF_PTI_DISABLING_MASK;
-
-        pr_info("Set %u PGPD entries\n", set);
-}
-EXPORT_SYMBOL(disable_pti_on_mm);
 
 /*
  * Walk the user copy of the page tables (optionally) trying to allocate

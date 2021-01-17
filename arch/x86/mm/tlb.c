@@ -211,7 +211,8 @@ static void cond_ibpb(struct task_struct *next)
 	 * would only affect the first schedule so the theoretically
 	 * exposed data is not really interesting.
 	 */
-	if (static_branch_likely(&switch_mm_cond_ibpb)) {
+	if (static_branch_likely(&switch_mm_cond_ibpb) &&
+	    !skip_switch_mm_cond_ibpb) {
 		unsigned long prev_mm, next_mm;
 
 		/*
@@ -259,7 +260,8 @@ static void cond_ibpb(struct task_struct *next)
 		this_cpu_write(cpu_tlbstate.last_user_mm_ibpb, next_mm);
 	}
 
-	if (static_branch_unlikely(&switch_mm_always_ibpb)) {
+	if (static_branch_unlikely(&switch_mm_always_ibpb) &&
+	    !skip_switch_mm_always_ibpb) {
 		/*
 		 * Only flush when switching to a user space task with a
 		 * different context than the user space task which ran

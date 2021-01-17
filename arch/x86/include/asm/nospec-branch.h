@@ -8,6 +8,7 @@
 #include <asm/alternative.h>
 #include <asm/alternative-asm.h>
 #include <asm/cpufeatures.h>
+#include <asm/dynamic-mitigations.h>
 #include <asm/msr-index.h>
 
 /*
@@ -44,25 +45,29 @@
  * the optimal version — two calls, each with their own speculation
  * trap should their return address end up getting used, in a loop.
  */
-#define __FILL_RETURN_BUFFER(reg, nr, sp)	\
-	mov	$(nr/2), reg;			\
-771:						\
-	call	772f;				\
-773:	/* speculation trap */			\
-	pause;					\
-	lfence;					\
-	jmp	773b;				\
-772:						\
-	call	774f;				\
-775:	/* speculation trap */			\
-	pause;					\
-	lfence;					\
-	jmp	775b;				\
-774:						\
-	dec	reg;				\
-	jnz	771b;				\
-	add	$(BITS_PER_LONG/8) * nr, sp;
-
+#define __FILL_RETURN_BUFFER(reg, nr, sp)			\
+	testq $(DM_RETPOLINE_SHIFT|DM_RSB_CTXSW_SHIFT), reg;	\
+	bt 	$DM_RETPOLINE, reg;				\
+	jz 	776f;						\
+	mov	$(nr/2), reg;					\
+771:								\
+	call	772f;						\
+773:	/* speculation trap */					\
+	pause;							\
+	lfence;							\
+	jmp	773b;						\
+772:								\
+	call	774f;						\
+775:	/* speculation trap */					\
+	pause;							\
+	lfence;							\
+	jmp	775b;						\
+774:								\
+	dec	reg;						\
+	jnz	771b;						\
+	add	$(BITS_PER_LONG/8) * nr, sp;			\
+	/* original function ends here */			\
+776:
 #ifdef __ASSEMBLY__
 
 /*
@@ -274,7 +279,8 @@ static inline void indirect_branch_prediction_barrier(void)
 {
 	u64 val = PRED_CMD_IBPB;
 
-	alternative_msr_write(MSR_IA32_PRED_CMD, val, X86_FEATURE_USE_IBPB);
+	if (X86_FEATURE_USE_IBPB && !cpu_has_dynamic_flag(DM_USE_IBPB_SHIFT))
+		alternative_msr_write(MSR_IA32_PRED_CMD, val, X86_FEATURE_USE_IBPB);
 }
 
 /* The Intel SPEC CTRL MSR base value cache */

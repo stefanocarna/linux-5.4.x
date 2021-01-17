@@ -6,6 +6,7 @@
 #include <asm/percpu.h>
 #include <asm/asm-offsets.h>
 #include <asm/processor-flags.h>
+#include <asm/dynamic-mitigations.h>
 
 /*
 
@@ -225,15 +226,15 @@ For 32-bit we have the following conventions - kernel is built with
 	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_PTI
 
 	/* Dynamically enable PTI if requested */
-	mov 	PER_CPU_VAR(current_task), \scratch_reg
-	mov 	MM_current(\scratch_reg), \scratch_reg
-	mov 	FLAGS_mm_struct(\scratch_reg), \scratch_reg
+	movq 	PER_CPU_VAR(current_task), \scratch_reg
+	movq 	MM_current(\scratch_reg), \scratch_reg
+	movq 	FLAGS_mm_struct(\scratch_reg), \scratch_reg
 	bt 	$MMF_PTI_ENABLED_BIT, \scratch_reg
 	jnc 	.Lend_\@
 
 	mov	%cr3, \scratch_reg
 
-	ALTERNATIVE "jmp .Lwrcr3_\@", "", X86_FEATURE_PCID
+	ALTERNATIVE "jmp .Lwrcr3_\@", "", fast_irqX86_FEATURE_PCID
 
 	/*
 	 * Test if the ASID needs a flush.
@@ -347,12 +348,18 @@ For 32-bit we have the following conventions - kernel is built with
  * FENCE_SWAPGS_KERNEL_ENTRY is used in the kernel entry non-swapgs code path,
  * to prevent the swapgs from getting speculatively skipped when coming from
  * user space.
+ * 
+ * Both the macros have been enhanced with the dynamic activation.
  */
 .macro FENCE_SWAPGS_USER_ENTRY
-	ALTERNATIVE "", "lfence", X86_FEATURE_FENCE_SWAPGS_USER
+	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_FENCE_SWAPGS_USER
+	btl 	$DM_FENCE_SWAP_USER, PER_CPU_VAR(pcpu_dynamic_mitigations)
+.Lend_\@:
 .endm
 .macro FENCE_SWAPGS_KERNEL_ENTRY
-	ALTERNATIVE "", "lfence", X86_FEATURE_FENCE_SWAPGS_KERNEL
+	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_FENCE_SWAPGS_KERNEL
+	btl 	$DM_FENCE_SWAP_KERNEL, PER_CPU_VAR(pcpu_dynamic_mitigations)
+.Lend_\@:
 .endm
 
 .macro STACKLEAK_ERASE_NOCLOBBER

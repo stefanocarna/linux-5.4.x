@@ -2,6 +2,7 @@
 //
 // Code shared between 32 and 64 bit
 
+#include <asm/dynamic-mitigations.h>
 #include <asm/spec-ctrl.h>
 
 void __switch_to_xtra(struct task_struct *prev_p, struct task_struct *next_p);
@@ -23,7 +24,8 @@ static inline void switch_to_extra(struct task_struct *prev,
 		 * TIF_SPEC_IB. For CONFIG_SMP=n TIF_SPEC_IB is not
 		 * in the TIF_WORK_CTXSW masks.
 		 */
-		if (!static_branch_likely(&switch_to_cond_stibp)) {
+		if (!static_branch_likely(&switch_to_cond_stibp) ||
+		    skip_switch_to_cond_stibp) {
 			prev_tif &= ~_TIF_SPEC_IB;
 			next_tif &= ~_TIF_SPEC_IB;
 		}

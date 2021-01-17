@@ -93,6 +93,12 @@ static void __used common(void)
 	BLANK();
 	DEFINE(PTREGS_SIZE, sizeof(struct pt_regs));
 
+	/* MM_current for PTI switch */
+	OFFSET(MM_current, task_struct, mm);
+
+	/* FLAGS_mm_struct for PTI switch */
+	OFFSET(FLAGS_mm_struct, mm_struct, flags);
+
 	/* TLB state for the entry code */
 	OFFSET(TLB_STATE_user_pcid_flush_mask, tlb_state, user_pcid_flush_mask);
 

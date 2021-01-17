@@ -173,7 +173,8 @@ x86_virt_spec_ctrl(u64 guest_spec_ctrl, u64 guest_virt_spec_ctrl, bool setguest)
 			hostval |= ssbd_tif_to_spec_ctrl(ti->flags);
 
 		/* Conditional STIBP enabled? */
-		if (static_branch_unlikely(&switch_to_cond_stibp))
+		if (static_branch_unlikely(&switch_to_cond_stibp) &&
+		    !skip_switch_to_cond_stibp)
 			hostval |= stibp_tif_to_spec_ctrl(ti->flags);
 
 		if (hostval != guestval) {
@@ -1177,8 +1178,9 @@ static enum ssb_mitigation __init __ssb_select_mitigation(void)
 		    !static_cpu_has(X86_FEATURE_AMD_SSBD)) {
 			x86_amd_ssb_disable();
 		} else {
-			x86_spec_ctrl_base |= SPEC_CTRL_SSBD;
-			wrmsrl(MSR_IA32_SPEC_CTRL, x86_spec_ctrl_base);
+			/* We disabled this code because it is enabled at runtime */
+			// x86_spec_ctrl_base |= SPEC_CTRL_SSBD;
+			// wrmsrl(MSR_IA32_SPEC_CTRL, x86_spec_ctrl_base);
 		}
 	}
 

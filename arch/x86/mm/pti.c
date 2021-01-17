@@ -155,9 +155,20 @@ pgd_t __pti_set_user_pgtbl(pgd_t *pgdp, pgd_t pgd)
 	 *  - we don't have NX support
 	 *  - we're clearing the PGD (i.e. the new pgd is not present).
 	 */
+	/* Dynamic PTI hack */
 	if ((pgd.pgd & (_PAGE_USER|_PAGE_PRESENT)) == (_PAGE_USER|_PAGE_PRESENT) &&
-	    (__supported_pte_mask & _PAGE_NX))
-		pgd.pgd |= _PAGE_NX;
+		    (__supported_pte_mask & _PAGE_NX)) {
+
+		/* We are disabling the PTI mechanism */
+		if (current->active_mm->flags & MMF_PTI_DISABLING_MASK)
+			goto skip;
+
+		/* Set the NX bit only if the process is supected */
+		if (current->active_mm->flags & MMF_PTI_ENABLED_MASK)
+			pgd.pgd |= _PAGE_NX;
+	}
+
+skip:
 
 	/* return the copy of the PGD we want the kernel to use: */
 	return pgd;

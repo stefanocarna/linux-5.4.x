@@ -26,6 +26,7 @@
 #include <linux/livepatch.h>
 #include <linux/syscalls.h>
 #include <linux/uaccess.h>
+#include <linux/dynamic-mitigations.h>
 
 #include <asm/desc.h>
 #include <asm/traps.h>
@@ -144,6 +145,9 @@ static void exit_to_usermode_loop(struct pt_regs *regs, u32 cached_flags)
 	while (true) {
 		/* We have work to do. */
 		local_irq_enable();
+
+		if (has_pending_mitigations(current))
+			enable_mitigations_on_task(current);
 
 		if (cached_flags & _TIF_NEED_RESCHED)
 			schedule();

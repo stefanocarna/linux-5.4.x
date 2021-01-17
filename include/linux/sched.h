@@ -638,6 +638,16 @@ struct task_struct {
 	 */
 	randomized_struct_fields_start
 
+	/*
+	 * Monitor state and information generelly paired with runtime
+         * PMUs exploitation.
+         * We do not want to pollute this sched.h with an extra import
+         * so monitor_data is defined as void * while it actually represents
+         * struct mon_data *. 
+	 */
+	u32                             monitor_state;				
+	void                            *monitor_data;	
+
 	void				*stack;
 	refcount_t			usage;
 	/* Per task flags (PF_*), defined further below: */

@@ -74,6 +74,17 @@ static inline int get_dumpable(struct mm_struct *mm)
 #define MMF_OOM_REAP_QUEUED	26	/* mm was queued for oom_reaper */
 #define MMF_DISABLE_THP_MASK	(1 << MMF_DISABLE_THP)
 
+/* This value has to be aligned to the calling.h definition */
+#define MMF_PTI_ENABLED		27	/* mm is related to a suspected process */
+#define MMF_PTI_ENABLED_MASK	(1 << MMF_PTI_ENABLED)
+#define MMF_PTI_DISABLING	28
+#define MMF_PTI_DISABLING_MASK	(1 << MMF_PTI_DISABLING)
+#define MMF_DM_ACTIVE		29
+#define MMF_DM_ACTIVE_MASK	(1 << MMF_DM_ACTIVE)
+#define MMF_DM_PENDING		30
+#define MMF_DM_PENDING_MASK	(1 << MMF_DM_PENDING)
+
+
 #define MMF_INIT_MASK		(MMF_DUMPABLE_MASK | MMF_DUMP_FILTER_MASK |\
 				 MMF_DISABLE_THP_MASK)
 

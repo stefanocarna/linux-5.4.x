@@ -34,12 +34,14 @@ bool inline has_mitigations(struct task_struct *tsk)
 {
 	return tsk && tsk->mm && (tsk->mm->flags & MMF_DM_ACTIVE_MASK);
 }
+EXPORT_SYMBOL(has_mitigations);
 
 bool inline has_pending_mitigations(struct task_struct *tsk)
 {
 	return tsk && tsk->mm && !(tsk->mm->flags & MMF_DM_ACTIVE_MASK) &&
 		(tsk->mm->flags & MMF_DM_PENDING_MASK);
 }
+EXPORT_SYMBOL(has_pending_mitigations);
 
 void request_mitigations_on_task(struct task_struct *tsk, bool delayed)
 {
@@ -279,6 +281,7 @@ void mitigations_switch(struct task_struct *prev, struct task_struct *curr)
 	    !(this_cpu_read_stable(pcpu_dynamic_mitigations) & DM_ENABLED))
 		set_bug_patches(true);
 }
+EXPORT_SYMBOL(mitigations_switch);
 
 void init_te_mitigations_on_task(struct task_struct *tsk)
 {

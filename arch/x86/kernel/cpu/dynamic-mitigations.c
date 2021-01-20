@@ -6,8 +6,6 @@
 #include <linux/gfp.h>
 #include <linux/sched/coredump.h>	/* MMF_HAS_SUSPECTED_MASK */
 
-#include <asm/debug_pti.h>
-
 
 #undef pr_fmt
 #define pr_fmt(fmt)     "** Dyanmic Mitigations **: " fmt

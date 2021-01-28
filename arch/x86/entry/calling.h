@@ -354,14 +354,14 @@ For 32-bit we have the following conventions - kernel is built with
 .macro FENCE_SWAPGS_USER_ENTRY
 	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_FENCE_SWAPGS_USER
 	btl 	$DM_FENCE_SWAP_USER, PER_CPU_VAR(pcpu_dynamic_mitigations)
-	jnc		.Lend_\@
+	jnc	.Lend_\@
 	lfence
 .Lend_\@:
 .endm
 .macro FENCE_SWAPGS_KERNEL_ENTRY
 	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_FENCE_SWAPGS_KERNEL
 	btl 	$DM_FENCE_SWAP_KERNEL, PER_CPU_VAR(pcpu_dynamic_mitigations)
-	jnc		.Lend_\@
+	jnc	.Lend_\@
 	lfence
 .Lend_\@:
 .endm

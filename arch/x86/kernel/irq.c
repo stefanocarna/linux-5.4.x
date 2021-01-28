@@ -313,13 +313,18 @@ EXPORT_SYMBOL(free_fast_irq);
 __visible void __irq_entry do_fast_IRQ(struct pt_regs *regs)
 {
 	u8 vector = ~regs->orig_ax;
+	/* TODO To be removed */
+	struct pt_regs *old_regs = set_irq_regs(regs);
 
 	entering_irq();
-
+	/* Add guards to safely remove an handler */
 	(*(fast_handler_t *)(fast_vector_handlers[vector]))();
 
-	ack_APIC_irq();
+	/* The IRQ handler is in charge of calling APIC EOI */
 	exiting_irq();
+
+	/* TODO To be removed */
+	set_irq_regs(old_regs);
 }
 
 /*

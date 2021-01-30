@@ -234,7 +234,7 @@ For 32-bit we have the following conventions - kernel is built with
 
 	mov	%cr3, \scratch_reg
 
-	ALTERNATIVE "jmp .Lwrcr3_\@", "", fast_irqX86_FEATURE_PCID
+	ALTERNATIVE "jmp .Lwrcr3_\@", "", X86_FEATURE_PCID
 
 	/*
 	 * Test if the ASID needs a flush.

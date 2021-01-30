@@ -157,7 +157,7 @@ static void set_bug_patches(bool enable)
 
 	flags = DM_RETPOLINE_SHIFT | DM_RSB_CTXSW_SHIFT |
 	    DM_USE_IBPB_SHIFT | DM_COND_STIBP_SHIFT | DM_COND_IBPB_SHIFT |
-	    DM_ALWAYS_IBPB_SHIFT | DM_ENABLED;
+	    DM_ALWAYS_IBPB_SHIFT | DM_MDS_CLEAR_SHIFT | DM_ENABLED;
 
 	/* Enable dynamic mitigations */
 	if (enable)

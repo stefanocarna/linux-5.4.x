@@ -349,7 +349,8 @@ static __always_inline void mds_clear_cpu_buffers(void)
  */
 static __always_inline void mds_user_clear_cpu_buffers(void)
 {
-	if (static_branch_likely(&mds_user_clear))
+	if (static_branch_likely(&mds_user_clear) &&
+	    !skip_mds_clear)
 		mds_clear_cpu_buffers();
 }
 
@@ -360,7 +361,8 @@ static __always_inline void mds_user_clear_cpu_buffers(void)
  */
 static inline void mds_idle_clear_cpu_buffers(void)
 {
-	if (static_branch_likely(&mds_idle_clear))
+	if (static_branch_likely(&mds_idle_clear) &&
+	    !skip_mds_clear)
 		mds_clear_cpu_buffers();
 }
 

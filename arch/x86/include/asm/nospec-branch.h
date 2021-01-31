@@ -279,7 +279,7 @@ static inline void indirect_branch_prediction_barrier(void)
 {
 	u64 val = PRED_CMD_IBPB;
 
-	if (X86_FEATURE_USE_IBPB && !cpu_has_dynamic_flag(DM_USE_IBPB_SHIFT))
+	if (!skip_mitigation(DM_USE_IBPB))
 		alternative_msr_write(MSR_IA32_PRED_CMD, val, X86_FEATURE_USE_IBPB);
 }
 
@@ -297,16 +297,18 @@ do {									\
 	u64 val = x86_spec_ctrl_base | SPEC_CTRL_IBRS;			\
 									\
 	preempt_disable();						\
-	alternative_msr_write(MSR_IA32_SPEC_CTRL, val,			\
-			      X86_FEATURE_USE_IBRS_FW);			\
+	if (!skip_mitigation(DM_USE_IBRS_FW))				\
+		alternative_msr_write(MSR_IA32_SPEC_CTRL, val,		\
+				X86_FEATURE_USE_IBRS_FW);		\
 } while (0)
 
 #define firmware_restrict_branch_speculation_end()			\
 do {									\
 	u64 val = x86_spec_ctrl_base;					\
 									\
-	alternative_msr_write(MSR_IA32_SPEC_CTRL, val,			\
-			      X86_FEATURE_USE_IBRS_FW);			\
+	if (!skip_mitigation(DM_USE_IBRS_FW))				\
+		alternative_msr_write(MSR_IA32_SPEC_CTRL, val,		\
+				      X86_FEATURE_USE_IBRS_FW);		\
 	preempt_enable();						\
 } while (0)
 

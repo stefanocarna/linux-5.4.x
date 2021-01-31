@@ -26,6 +26,8 @@ DECLARE_PER_CPU(u32, pcpu_dynamic_mitigations);
 #define DM_ALWAYS_IBPB			8
 #define DM_MDS_CLEAR			9
 
+#define DM_USE_IBRS_FW			10
+
 #define DM_ENABLED			14
 
 #define DM_RETPOLINE_SHIFT		_BITUL(DM_RETPOLINE)
@@ -55,6 +57,8 @@ DECLARE_PER_CPU(u32, pcpu_dynamic_mitigations);
 #define DM_G_TE_MITIGATE_SHIFT		_BITUL(DM_G_TE_MITIGATE)
 #define DM_G_VERBOSE_SHIFT		_BITUL(DM_G_VERBOSE)
 
+#define skip_mitigation(type)				\
+	(!cpu_has_dynamic_flag(_BITUL(type)))
 
 #define skip_switch_to_cond_stibp			\
 	(!cpu_has_dynamic_flag(DM_COND_STIBP_SHIFT))

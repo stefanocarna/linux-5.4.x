@@ -146,6 +146,24 @@ static void set_ssb_mitigation(bool enable)
 	wrmsrl(MSR_IA32_SPEC_CTRL, msr);
 }
 
+static void set_ibrs_mitigation(bool enable)
+{
+	u64 msr;
+
+	if (!boot_cpu_has(X86_FEATURE_MSR_SPEC_CTRL) ||
+	    !boot_cpu_has(X86_FEATURE_IBRS_ENHANCED))
+		return;
+
+	rdmsrl(MSR_IA32_SPEC_CTRL, msr);
+
+	if (enable) {
+		msr |= SPEC_CTRL_IBRS;
+	} else {
+		msr &= ~SPEC_CTRL_IBRS;
+	}
+	wrmsrl(MSR_IA32_SPEC_CTRL, msr);
+}
+
 static void set_bug_patches(bool enable)
 {
 	unsigned flags;
@@ -153,9 +171,12 @@ static void set_bug_patches(bool enable)
 	/* Store Bypass mitigation */
 	set_ssb_mitigation(enable);
 
+	set_ibrs_mitigation(enable);
+
 	flags = DM_RETPOLINE_SHIFT | DM_RSB_CTXSW_SHIFT |
 	    DM_USE_IBPB_SHIFT | DM_COND_STIBP_SHIFT | DM_COND_IBPB_SHIFT |
-	    DM_ALWAYS_IBPB_SHIFT | DM_MDS_CLEAR_SHIFT | DM_ENABLED;
+	    DM_ALWAYS_IBPB_SHIFT | DM_MDS_CLEAR_SHIFT | DM_USE_IBRS_FW |
+	    DM_ENABLED;
 
 	/* Enable dynamic mitigations */
 	if (enable)

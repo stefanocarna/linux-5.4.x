@@ -623,6 +623,7 @@ enum spectre_v2_mitigation_cmd {
 	SPECTRE_V2_CMD_RETPOLINE,
 	SPECTRE_V2_CMD_RETPOLINE_GENERIC,
 	SPECTRE_V2_CMD_RETPOLINE_AMD,
+	SPECTRE_V2_CMD_NO_RETPOLINE,
 };
 
 enum spectre_v2_user_cmd {
@@ -799,6 +800,7 @@ static const struct {
 	{ "off",		SPECTRE_V2_CMD_NONE,		  false },
 	{ "on",			SPECTRE_V2_CMD_FORCE,		  true  },
 	{ "retpoline",		SPECTRE_V2_CMD_RETPOLINE,	  false },
+	{ "noretpoline",	SPECTRE_V2_CMD_NO_RETPOLINE,	  false },
 	{ "retpoline,amd",	SPECTRE_V2_CMD_RETPOLINE_AMD,	  false },
 	{ "retpoline,generic",	SPECTRE_V2_CMD_RETPOLINE_GENERIC, false },
 	{ "auto",		SPECTRE_V2_CMD_AUTO,		  false },
@@ -875,11 +877,13 @@ static void __init spectre_v2_select_mitigation(void)
 
 	case SPECTRE_V2_CMD_FORCE:
 	case SPECTRE_V2_CMD_AUTO:
+	case SPECTRE_V2_CMD_NO_RETPOLINE:
 		if (boot_cpu_has(X86_FEATURE_IBRS_ENHANCED)) {
 			mode = SPECTRE_V2_IBRS_ENHANCED;
 			/* Force it so VMEXIT will restore correctly */
-			x86_spec_ctrl_base |= SPEC_CTRL_IBRS;
-			wrmsrl(MSR_IA32_SPEC_CTRL, x86_spec_ctrl_base);
+			/* Activated at runtime */
+			// x86_spec_ctrl_base |= SPEC_CTRL_IBRS;
+			// wrmsrl(MSR_IA32_SPEC_CTRL, x86_spec_ctrl_base);
 			goto specv2_set_mode;
 		}
 		if (IS_ENABLED(CONFIG_RETPOLINE))
@@ -915,7 +919,13 @@ retpoline_auto:
 	} else {
 	retpoline_generic:
 		mode = SPECTRE_V2_RETPOLINE_GENERIC;
-		setup_force_cpu_cap(X86_FEATURE_RETPOLINE);
+		/* Trick to avoid Retpoline, but enable other mitigations */
+		if (cmd != SPECTRE_V2_CMD_NO_RETPOLINE) {
+			setup_force_cpu_cap(X86_FEATURE_RETPOLINE);
+			pr_info("RETPOLINE is active\n");
+		} else {
+			pr_info("RETPOLINE is not active\n");
+		}
 	}
 
 specv2_set_mode:

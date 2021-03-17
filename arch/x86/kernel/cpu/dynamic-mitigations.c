@@ -209,8 +209,7 @@ void enable_pti_on_mm(struct mm_struct *mm)
 	}
 
         /* Set the flag to be checked at kernel mode exit  */
-        mm->flags |= MMF_PTI_ENABLED_MASK;
-	mb();
+        WRITE_ONCE(mm->flags, mm->flags | MMF_PTI_ENABLED_MASK);
 	
         /* 
          * Until now, all threads with this mm worked on Kernel View.
@@ -264,7 +263,6 @@ void disable_pti_on_mm(struct mm_struct *mm)
          */
 
         mm->flags |= MMF_PTI_DISABLING_MASK;
-	mb();
 
 	/* Scan for all present kernel pgd entries and clear the NX bit */
 	while (pgdp_maps_userspace(k_pgdp)) {
@@ -280,7 +278,7 @@ void disable_pti_on_mm(struct mm_struct *mm)
        
         /* Clear the flag to be checked at kernel mode exit */
         mm->flags &= ~(MMF_PTI_ENABLED_MASK & MMF_PTI_DISABLING_MASK);
-	mb();
+	smp_mb();
 
         /* End of PTI OFF transition */
         pr_info("Set %u PGPD entries\n", set);

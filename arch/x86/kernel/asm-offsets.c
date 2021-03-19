@@ -19,6 +19,8 @@
 #include <asm/suspend.h>
 #include <asm/tlbflush.h>
 
+#include <asm/intel_pmc_workaround.h>
+
 #ifdef CONFIG_XEN
 #include <xen/interface/xen.h>
 #endif
@@ -105,4 +107,11 @@ static void __used common(void)
 	OFFSET(TSS_sp0, tss_struct, x86_tss.sp0);
 	OFFSET(TSS_sp1, tss_struct, x86_tss.sp1);
 	OFFSET(TSS_sp2, tss_struct, x86_tss.sp2);
+
+	// /* PMC_SNAPSHOT for entry/leave kernel-/user-land */
+	// OFFSET(TASK_STRUCT_pmc_user, task_struct, pmc_user);
+	// OFFSET(TASK_STRUCT_pmc_kernel, task_struct, pmc_kernel);
+	// OFFSET(PMC_SNAPSHOT_tsc, pmc_snapshot, tsc);
+	OFFSET(PMCS_SNAPSHOT_pmcs, pmcs_snapshot, pmcs);
+	DEFINE(SIZEOF_pmc, sizeof(u64));
 }

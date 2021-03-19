@@ -12,6 +12,7 @@
 
 #include <linux/kcov.h>
 
+#include <asm/intel_pmc_workaround.h>
 #include <asm/switch_to.h>
 #include <asm/tlb.h>
 
@@ -3291,6 +3292,8 @@ static struct rq *finish_task_switch(struct task_struct *prev)
 
 	rq->prev_mm = NULL;
 
+	pmc_cpl_filter_switch();
+	
 	/*
 	 * A task struct has one reference for the use as "current".
 	 * If a task dies, then it sets TASK_DEAD in tsk->state and calls

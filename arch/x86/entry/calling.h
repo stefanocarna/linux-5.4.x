@@ -6,6 +6,7 @@
 #include <asm/percpu.h>
 #include <asm/asm-offsets.h>
 #include <asm/processor-flags.h>
+#include <asm/intel_pmc_workaround.h>
 
 /*
 
@@ -208,6 +209,9 @@ For 32-bit we have the following conventions - kernel is built with
 	PER_CPU_VAR(cpu_tlbstate) + TLB_STATE_user_pcid_flush_mask
 
 .macro SWITCH_TO_USER_CR3_NOSTACK scratch_reg:req scratch_reg2:req
+	/* Take kernel pmc snapshot */
+	PMC_SNAPSHOT_KERNEL_EXIT
+	
 	ALTERNATIVE "jmp .Lend_\@", "", X86_FEATURE_PTI
 	mov	%cr3, \scratch_reg
 
@@ -306,8 +310,11 @@ For 32-bit we have the following conventions - kernel is built with
 .macro SWITCH_TO_KERNEL_CR3 scratch_reg:req
 .endm
 .macro SWITCH_TO_USER_CR3_NOSTACK scratch_reg:req scratch_reg2:req
+	/* Take kernel pmc snapshot */
+	PMC_SNAPSHOT_KERNEL_EXIT
 .endm
 .macro SWITCH_TO_USER_CR3_STACK scratch_reg:req
+	SWITCH_TO_USER_CR3_NOSTACK scratch_reg=\scratch_reg
 .endm
 .macro SAVE_AND_SWITCH_TO_KERNEL_CR3 scratch_reg:req save_reg:req
 .endm
@@ -315,6 +322,7 @@ For 32-bit we have the following conventions - kernel is built with
 .endm
 
 #endif
+	/* Take kernel pmc snapshot */
 
 /*
  * Mitigate Spectre v1 for conditional swapgs code paths.

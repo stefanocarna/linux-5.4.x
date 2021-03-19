@@ -156,6 +156,9 @@ ENTRY(entry_SYSCALL_64)
 	SWITCH_TO_KERNEL_CR3 scratch_reg=%rsp
 	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
 
+	/* Take user pmc snapshot */
+	PMC_SNAPSHOT_KERNEL_ENTRY
+
 	/* Construct struct pt_regs on stack */
 	pushq	$__USER_DS				/* pt_regs->ss */
 	pushq	PER_CPU_VAR(cpu_tss_rw + TSS_sp2)	/* pt_regs->sp */
@@ -532,6 +535,9 @@ ENTRY(interrupt_entry)
 	SWITCH_TO_KERNEL_CR3 scratch_reg=%rdi
 	movq	%rsp, %rdi
 	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
+
+	/* Take user pmc snapshot */
+	PMC_SNAPSHOT_KERNEL_ENTRY
 
 	 /*
 	  * We have RDI, return address, and orig_ax on the stack on
@@ -1248,6 +1254,9 @@ ENTRY(paranoid_entry)
 	 */
 	FENCE_SWAPGS_KERNEL_ENTRY
 
+	/* Take user pmc snapshot */
+	PMC_SNAPSHOT_KERNEL_ENTRY
+
 	ret
 END(paranoid_entry)
 
@@ -1310,6 +1319,10 @@ ENTRY(error_entry)
 	movq	%rax, %rsp			/* switch stack */
 	ENCODE_FRAME_POINTER
 	pushq	%r12
+
+	/* Take user pmc snapshot */
+	PMC_SNAPSHOT_KERNEL_ENTRY
+
 	ret
 
 .Lerror_entry_done_lfence:
@@ -1450,6 +1463,10 @@ ENTRY(nmi)
 	SWITCH_TO_KERNEL_CR3 scratch_reg=%rdx
 	movq	%rsp, %rdx
 	movq	PER_CPU_VAR(cpu_current_top_of_stack), %rsp
+
+	/* Take user pmc snapshot */
+	PMC_SNAPSHOT_KERNEL_ENTRY
+
 	UNWIND_HINT_IRET_REGS base=%rdx offset=8
 	pushq	5*8(%rdx)	/* pt_regs->ss */
 	pushq	4*8(%rdx)	/* pt_regs->rsp */

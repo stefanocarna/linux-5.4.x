@@ -48,6 +48,8 @@ DECLARE_PER_CPU(u32, pcpu_dynamic_mitigations);
 #define DM_G_CPU_EXILE			1	
 /* Transient Execution mitigations */
 #define DM_G_TE_MITIGATE		2
+/* Skip NX bit restore on PTI */	
+#define DM_G_SKIP_NX_PTI		17	
 /* Enable verbose mode */	
 #define DM_G_VERBOSE			18	
 
@@ -55,6 +57,7 @@ DECLARE_PER_CPU(u32, pcpu_dynamic_mitigations);
 #define DM_G_LLC_FLUSH_SHIFT		_BITUL(DM_G_LLC_FLUSH)
 #define DM_G_CPU_EXILE_SHIFT		_BITUL(DM_G_CPU_EXILE)
 #define DM_G_TE_MITIGATE_SHIFT		_BITUL(DM_G_TE_MITIGATE)
+#define DM_G_SKIP_NX_PTI_SHIFT		_BITUL(DM_G_SKIP_NX_PTI)
 #define DM_G_VERBOSE_SHIFT		_BITUL(DM_G_VERBOSE)
 
 #define skip_mitigation(type)				\
@@ -69,7 +72,7 @@ DECLARE_PER_CPU(u32, pcpu_dynamic_mitigations);
 #define skip_switch_mm_always_ibpb			\
 	(!cpu_has_dynamic_flag(DM_ALWAYS_IBPB_SHIFT))
 
-#define skip_mds_clear				\
+#define skip_mds_clear					\
 	(!cpu_has_dynamic_flag(DM_MDS_CLEAR_SHIFT))
 				
 

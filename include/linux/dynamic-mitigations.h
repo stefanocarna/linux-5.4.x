@@ -30,13 +30,15 @@ extern void fini_te_mitigations_on_task(struct task_struct *tsk);
 /* Side-channels mitigations */
 extern void LLC_flush(struct task_struct *tsk);
 
-extern void exile_task_from_physical_cpu(struct task_struct *tsk, unsigned no_cpu);
+extern void exile_task_from_physical_cpu(struct task_struct *tsk,
+					 unsigned no_cpu);
 
-extern void mitigations_switch(struct task_struct *prev, struct task_struct *curr);
+extern void mitigations_switch(struct task_struct *prev,
+			       struct task_struct *curr);
 
 /* This flags are related to task->monitor_state */
-#define DM_SCM_CPU_EXILED 	0
-#define DM_ACTIVATING		1
-#define DM_ACTIVE		2
+#define DM_SCM_CPU_EXILED 31
+#define DM_ACTIVATING 30
+#define DM_ACTIVE 29
 
 #endif /* _DYNAMIC_PATCHES_H */

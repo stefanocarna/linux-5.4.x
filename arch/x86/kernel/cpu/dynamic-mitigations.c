@@ -14,7 +14,7 @@ DEFINE_PER_CPU(u32, pcpu_dynamic_mitigations) = 0;
 EXPORT_SYMBOL(pcpu_dynamic_mitigations);
 
 /* System configutration for dynamic mitigations */
-static u32 gbl_dynamic_mitigations = 0;
+u32 gbl_dynamic_mitigations = 0;
 
 void inline enable_mitigations_on_system(unsigned mitigation)
 {
@@ -224,6 +224,10 @@ void enable_pti_on_mm(struct mm_struct *mm)
          * this time slot as a grace period. Of course, an attack may still be
          * perpetrated in this small time window. 
          */
+	if (gbl_dynamic_mitigations & DM_G_SKIP_NX_PTI_SHIFT) {
+		pr_info("Skipping NX restore on enable PTI\n");
+		return;
+	}
 
 	/* Scan for all present kernel pgd entries and set the NX bit */
 	while (pgdp_maps_userspace(k_pgdp)) {
@@ -263,6 +267,11 @@ void disable_pti_on_mm(struct mm_struct *mm)
          */
 
         mm->flags |= MMF_PTI_DISABLING_MASK;
+	
+	if (gbl_dynamic_mitigations & DM_G_SKIP_NX_PTI_SHIFT) {
+		pr_info("Skipping NX set on disable PTI\n");
+		goto skip;
+	}
 
 	/* Scan for all present kernel pgd entries and clear the NX bit */
 	while (pgdp_maps_userspace(k_pgdp)) {
@@ -275,7 +284,8 @@ void disable_pti_on_mm(struct mm_struct *mm)
                     }
 		++k_pgdp;
 	}
-       
+
+skip:
         /* Clear the flag to be checked at kernel mode exit */
         mm->flags &= ~(MMF_PTI_ENABLED_MASK & MMF_PTI_DISABLING_MASK);
 	smp_mb();

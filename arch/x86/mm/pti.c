@@ -40,6 +40,8 @@
 #include <asm/desc.h>
 #include <asm/sections.h>
 
+#include <linux/dynamic-mitigations.h>
+
 #undef pr_fmt
 #define pr_fmt(fmt)     "Kernel/User page tables isolation: " fmt
 
@@ -164,7 +166,8 @@ pgd_t __pti_set_user_pgtbl(pgd_t *pgdp, pgd_t pgd)
 			goto skip;
 
 		/* Set the NX bit only if the process is supected */
-		if (current->active_mm->flags & MMF_PTI_ENABLED_MASK)
+		if (current->active_mm->flags & MMF_PTI_ENABLED_MASK &&
+		    !(gbl_dynamic_mitigations & DM_G_SKIP_NX_PTI_SHIFT))
 			pgd.pgd |= _PAGE_NX;
 	}
 
